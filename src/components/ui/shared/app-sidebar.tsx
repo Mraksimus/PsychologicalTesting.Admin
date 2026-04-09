@@ -2,12 +2,12 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
-  SidebarFooter,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
 
 import {
@@ -17,79 +17,94 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 
-import { BarChart, FileText, Shield, User, Users, ChevronUp } from "lucide-react"
+import {
+  BarChart,
+  FileText,
+  Shield,
+  Users,
+  User,
+  ChevronUp,
+  LogOut,
+} from "lucide-react"
+
+import { useLocation, useNavigate } from "react-router-dom"
 
 export function AppSidebar() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const items = [
+    { label: "Пользователи", icon: Users, path: "/users" },
+    { label: "Роли", icon: Shield, path: "/roles" },
+    { label: "Тесты", icon: FileText, path: "/tests" },
+    { label: "Статистика", icon: BarChart, path: "/stats" },
+  ]
+
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
+
         <SidebarGroup>
           <SidebarGroupLabel>Основное</SidebarGroupLabel>
 
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <Users className="h-5 w-5" />
-                  <span className="ml-2">Пользователи</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {items.map((item) => {
+                const active = location.pathname === item.path
 
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <Shield className="h-5 w-5" />
-                  <span className="ml-2">Роли</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <FileText className="h-5 w-5" />
-                  <span className="ml-2">Тесты</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <BarChart className="h-5 w-5" />
-                  <span className="ml-2">Статистика</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.path)}
+                      className={active ? "bg-accent" : ""}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* FOOTER USER MENU */}
-        <SidebarFooter className="mt-auto p-2">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-
-                {/* Кнопка */}
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <User className="w-6 h-6" />
-                      <span>Maria</span>
-                    </div>
-
-                    {/* стрелка справа */}
-                    <ChevronUp className="h-4 w-4 opacity-60" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-
-                {/* Выпадающее меню */}
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem onClick={() => console.log("logout")}>
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-
-              </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
       </SidebarContent>
+
+      {/* USER MENU */}
+      <SidebarFooter className="p-2">
+
+        <DropdownMenu>
+
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton className="flex w-full items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                <span>Maria</span>
+              </div>
+
+              <ChevronUp className="h-4 w-4 opacity-60" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-44">
+
+            <DropdownMenuItem onClick={() => console.log("profile")}>
+              Profile
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => console.log("logout")}
+              className="text-red-500"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
+
+          </DropdownMenuContent>
+
+        </DropdownMenu>
+
+      </SidebarFooter>
     </Sidebar>
   )
 }

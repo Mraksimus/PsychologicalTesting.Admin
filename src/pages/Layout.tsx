@@ -1,5 +1,5 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import * as React from "react"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/ui/shared/app-sidebar"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -10,16 +10,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Sidebar */}
         <AppSidebar />
 
-        {/* Main content */}
-        <main className="flex flex-1 flex-col overflow-auto">
+        {/* Main */}
+        <main className="flex flex-1 flex-col overflow-hidden">
 
-          {/* Top bar */}
-          <div className="p-2 border-b">
+          {/* Topbar */}
+          <header className="flex h-12 items-center border-b px-4">
             <SidebarTrigger />
-          </div>
+          </header>
 
           {/* Page content */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 overflow-auto p-6">
             {children}
           </div>
 
