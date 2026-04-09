@@ -80,9 +80,15 @@ const activeTests: Test[] = [
   { name: "Выгорание", completions: 41, status: "draft" },
 ]
 
-const statusConfig: Record<Status, { label: string; variant: "default" | "secondary" }> = {
-  active: { label: "Активен", variant: "default" },
-  draft: { label: "Черновик", variant: "secondary" },
+const statusConfig = {
+  active: {
+    label: "Активен",
+    className: "bg-emerald-500 text-white",
+  },
+  draft: {
+    label: "Черновик",
+    className: "bg-gray-200 text-gray-700",
+  },
 }
 
 // --- Компоненты ---
@@ -192,23 +198,40 @@ function Dashboard() {
           </Button>
         </CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
             <thead>
             <tr className="text-muted-foreground border-b">
-              <th className="text-left py-2">Название</th>
-              <th className="text-left py-2">Прохождения</th>
-              <th className="text-left py-2">Статус</th>
+              <th className="text-left py-3 w-1/4">Название</th>
+              <th className="text-left py-3 w-1/4">Прохождения</th>
+              <th className="text-right py-3 w-[140px]">Статус</th>
             </tr>
             </thead>
+
             <tbody>
             {activeTests.map((t) => (
-              <tr key={t.name} className="border-b hover:bg-accent/50">
-                <td className="py-2">{t.name}</td>
-                <td>{t.completions}</td>
-                <td>
-                  <Badge variant={statusConfig[t.status].variant}>
-                    {statusConfig[t.status].label}
-                  </Badge>
+              <tr
+                key={t.name}
+                className="border-b hover:bg-accent/40 transition-colors"
+              >
+                {/* Название */}
+                <td className="py-3 pr-4 truncate">
+                  {t.name}
+                </td>
+
+                {/* Прохождения */}
+                <td className="py-3">
+                  {t.completions}
+                </td>
+
+                {/* Статус */}
+                <td className="py-3 w-[140px] text-right align-middle">
+                  <div className="flex justify-end">
+                    <Badge
+                      className={`min-w-[90px] justify-center whitespace-nowrap px-3 py-1 ${statusConfig[t.status].className}`}
+                    >
+                      {statusConfig[t.status].label}
+                    </Badge>
+                  </div>
                 </td>
               </tr>
             ))}
