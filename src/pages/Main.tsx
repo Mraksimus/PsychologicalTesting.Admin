@@ -53,6 +53,7 @@ interface KpiProps {
   value: string
   delta: string
   trend: Trend
+  className?: string
 }
 
 // --- Данные ---
@@ -85,9 +86,9 @@ const statusConfig: Record<Status, { label: string; variant: "default" | "second
 }
 
 // --- Компоненты ---
-function KpiCard({ icon: Icon, label, value, delta, trend }: KpiProps) {
+function KpiCard({ icon: Icon, label, value, delta, trend, className }: KpiProps) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex justify-between pb-2">
         <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -134,14 +135,14 @@ function Dashboard() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard icon={Users} label="Пользователи" value="1248" delta="+12%" trend="up" />
-        <KpiCard icon={FileText} label="Тесты" value="47" delta="+3" trend="up" />
-        <KpiCard icon={CheckSquare} label="Прохождения" value="384" delta="+8%" trend="up" />
+      <div className="flex gap-4">
+        <KpiCard className="flex-1 min-w-[200px]" icon={Users} label="Пользователи" value="1248" delta="+12%" trend="up" />
+        <KpiCard className="flex-1 min-w-[200px]" icon={FileText} label="Тесты" value="47" delta="+3" trend="up" />
+        <KpiCard className="flex-1 min-w-[200px]" icon={CheckSquare} label="Прохождения" value="384" delta="+8%" trend="up" />
       </div>
 
       {/* CHART + EVENTS */}
-      <div className="grid grid-cols-[1fr_300px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
         {/* Chart */}
         <Card>
           <CardHeader>
