@@ -23,6 +23,7 @@ import {
   Shield,
   Users,
   User,
+  LucideHome,
   ChevronUp,
   LogOut,
 } from "lucide-react"
@@ -34,6 +35,7 @@ export function AppSidebar() {
   const navigate = useNavigate()
 
   const items = [
+    { label: "Главная", icon: LucideHome, path: "/home" },
     { label: "Пользователи", icon: Users, path: "/users" },
     { label: "Роли", icon: Shield, path: "/roles" },
     { label: "Тесты", icon: FileText, path: "/tests" },
@@ -43,7 +45,6 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-
         <SidebarGroup>
           <SidebarGroupLabel>Основное</SidebarGroupLabel>
 
@@ -67,14 +68,11 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
       </SidebarContent>
 
       {/* USER MENU */}
       <SidebarFooter className="p-2">
-
         <DropdownMenu>
-
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2">
@@ -87,7 +85,6 @@ export function AppSidebar() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-44">
-
             <DropdownMenuItem onClick={() => console.log("profile")}>
               Profile
             </DropdownMenuItem>
@@ -99,11 +96,8 @@ export function AppSidebar() {
               <LogOut className="mr-2 h-4 w-4" />
               Logout
             </DropdownMenuItem>
-
           </DropdownMenuContent>
-
         </DropdownMenu>
-
       </SidebarFooter>
     </Sidebar>
   )
