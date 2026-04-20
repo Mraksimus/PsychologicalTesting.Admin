@@ -221,13 +221,13 @@ function getStatusVariant(status: UserStatus) {
 }
 
 function KpiCard({
-                   icon: Icon,
-                   label,
-                   value,
-                   delta,
-                   trend,
-                   className,
-                 }: KpiProps) {
+ icon: Icon,
+ label,
+ value,
+ delta,
+ trend,
+ className,
+}: KpiProps) {
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -392,7 +392,9 @@ export default function UsersPage() {
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <ThemeToggle />
+
             <Sheet open={sheetOpen} onOpenChange={handleOpenSheet}>
               <SheetTrigger asChild>
                 <Button size="sm">
