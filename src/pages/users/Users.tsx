@@ -1,14 +1,8 @@
-import { useMemo, useState } from "react"
-import {
-  ArrowUpRight,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Users,
-} from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { ArrowUpRight, MoreHorizontal, Search, Users } from "lucide-react"
+
 import Layout from "@/pages/Layout.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -30,16 +24,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
 import {
   Pagination,
   PaginationContent,
@@ -58,326 +45,185 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-type UserRole = "Администратор" | "Студент"
-type UserStatus = "Активен" | "Ожидает" | "Заблокирован"
-type Trend = "up" | "neutral"
+import {
+  roles as rolesApi,
+  users as usersApi,
+} from "@/api/endpoints"
+import type {
+  AdminUserItem,
+  ExistingRole,
+  PageResponse,
+  UUID,
+} from "@/api/types"
+import { ApiError } from "@/api/client"
 
-type UserItem = {
-  id: string
-  name: string
-  email: string
-  role: UserRole
-  status: UserStatus
-  registeredAt: string
-  lastSeen: string
-  testsCompleted: number
-}
+const PAGE_SIZE = 8
 
 type KpiProps = {
   icon: React.ElementType
   label: string
   value: string
   delta: string
-  trend: Trend
   className?: string
 }
 
-const PAGE_SIZE = 8
-
-const initialUsers: UserItem[] = [
-  {
-    id: "1",
-    name: "Мария Тихонова",
-    email: "maria@company.ru",
-    role: "Администратор",
-    status: "Активен",
-    lastSeen: "5 мин назад",
-    testsCompleted: 42,
-    registeredAt: "10.01.2025",
-  },
-  {
-    id: "2",
-    name: "Алексей Орлов",
-    email: "orlov@company.ru",
-    role: "Студент",
-    status: "Активен",
-    lastSeen: "22 мин назад",
-    testsCompleted: 18,
-    registeredAt: "15.02.2025",
-  },
-  {
-    id: "3",
-    name: "Елена Смирнова",
-    email: "smirnova@company.ru",
-    role: "Администратор",
-    status: "Ожидает",
-    lastSeen: "Сегодня, 09:12",
-    testsCompleted: 7,
-    registeredAt: "02.03.2025",
-  },
-  {
-    id: "4",
-    name: "Дмитрий Павлов",
-    email: "dpavlov@company.ru",
-    role: "Студент",
-    status: "Заблокирован",
-    lastSeen: "Вчера, 18:40",
-    testsCompleted: 31,
-    registeredAt: "20.11.2024",
-  },
-  {
-    id: "5",
-    name: "Ирина Новикова",
-    email: "novikova@company.ru",
-    role: "Студент",
-    status: "Активен",
-    lastSeen: "2 часа назад",
-    testsCompleted: 26,
-    registeredAt: "05.04.2025",
-  },
-  {
-    id: "6",
-    name: "Сергей Кузнецов",
-    email: "kuznets@company.ru",
-    role: "Студент",
-    status: "Активен",
-    lastSeen: "1 день назад",
-    testsCompleted: 14,
-    registeredAt: "18.03.2025",
-  },
-  {
-    id: "7",
-    name: "Анна Белова",
-    email: "belova@company.ru",
-    role: "Администратор",
-    status: "Ожидает",
-    lastSeen: "3 дня назад",
-    testsCompleted: 2,
-    registeredAt: "09.04.2025",
-  },
-  {
-    id: "8",
-    name: "Павел Фёдоров",
-    email: "fedorov@company.ru",
-    role: "Администратор",
-    status: "Активен",
-    lastSeen: "45 мин назад",
-    testsCompleted: 22,
-    registeredAt: "07.01.2025",
-  },
-  {
-    id: "9",
-    name: "Ольга Захарова",
-    email: "zaharova@company.ru",
-    role: "Студент",
-    status: "Заблокирован",
-    lastSeen: "7 дней назад",
-    testsCompleted: 9,
-    registeredAt: "14.02.2025",
-  },
-  {
-    id: "10",
-    name: "Николай Попов",
-    email: "popov@company.ru",
-    role: "Студент",
-    status: "Активен",
-    lastSeen: "30 мин назад",
-    testsCompleted: 37,
-    registeredAt: "22.12.2024",
-  },
-  {
-    id: "11",
-    name: "Татьяна Ларина",
-    email: "larina@company.ru",
-    role: "Студент",
-    status: "Активен",
-    lastSeen: "Сегодня, 11:30",
-    testsCompleted: 15,
-    registeredAt: "03.02.2025",
-  },
-  {
-    id: "12",
-    name: "Виктор Соколов",
-    email: "sokolov@company.ru",
-    role: "Студент",
-    status: "Ожидает",
-    lastSeen: "2 дня назад",
-    testsCompleted: 0,
-    registeredAt: "17.04.2025",
-  },
-]
-
-function getStatusVariant(status: UserStatus) {
-  switch (status) {
-    case "Активен":
-      return "default"
-    case "Ожидает":
-      return "secondary"
-    case "Заблокирован":
-      return "destructive"
-    default:
-      return "outline"
-  }
-}
-
-function KpiCard({
- icon: Icon,
- label,
- value,
- delta,
- trend,
- className,
-}: KpiProps) {
+function KpiCard({ icon: Icon, label, value, delta, className }: KpiProps) {
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
-        <div className="space-y-1">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {label}
-          </CardTitle>
-        </div>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {label}
+        </CardTitle>
         <Icon className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
-
       <CardContent>
         <div className="text-3xl font-semibold tracking-tight">{value}</div>
-
-        <div className="mt-2 flex items-center gap-1 text-sm">
-          {trend === "up" ? (
-            <ArrowUpRight className="h-4 w-4 text-green-500" />
-          ) : null}
-
-          <span
-            className={
-              trend === "up" ? "text-green-600" : "text-muted-foreground"
-            }
-          >
-            {delta}
-          </span>
+        <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
+          <ArrowUpRight className="h-4 w-4" />
+          <span>{delta}</span>
         </div>
       </CardContent>
     </Card>
   )
 }
 
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  try {
+    return new Date(iso).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+  } catch {
+    return iso
+  }
+}
+
+function fullName(u: AdminUserItem): string {
+  return [u.surname, u.name, u.patronymic ?? ""]
+    .filter((part) => part && part.trim().length > 0)
+    .join(" ")
+}
+
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserItem[]>(initialUsers)
-  const [search, setSearch] = useState("")
-  const [role, setRole] = useState("all")
-  const [status, setStatus] = useState("all")
-
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newEmail, setNewEmail] = useState("")
-  const [newRole, setNewRole] = useState<UserRole>("Студент")
-  const [newStatus, setNewStatus] = useState<UserStatus>("Ожидает")
-
+  const [items, setItems] = useState<AdminUserItem[]>([])
+  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
 
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const query = search.toLowerCase().trim()
+  const [search, setSearch] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+  const [roleId, setRoleId] = useState<string>("all")
 
-      const matchesSearch =
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
+  const [allRoles, setAllRoles] = useState<ExistingRole[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-      const matchesRole = role === "all" || user.role === role
-      const matchesStatus = status === "all" || user.status === status
+  // Debounce поиска
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
-      return matchesSearch && matchesRole && matchesStatus
-    })
-  }, [users, search, role, status])
+  // Загрузка списка ролей
+  useEffect(() => {
+    rolesApi
+      .list()
+      .then(setAllRoles)
+      .catch(() => {
+        // некритично, фильтр просто не отрисуется
+      })
+  }, [])
 
-  const totalUsers = users.length
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
-
-  const paginatedUsers = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
-    return filteredUsers.slice(start, start + PAGE_SIZE)
-  }, [filteredUsers, page])
-
-  function resetForm() {
-    setNewName("")
-    setNewEmail("")
-    setNewRole("Студент")
-    setNewStatus("Ожидает")
-  }
-
-  function handleAddUser() {
-    if (!newName.trim() || !newEmail.trim()) return
-
-    const today = new Date().toLocaleDateString("ru-RU")
-
-    const user: UserItem = {
-      id: String(Date.now()),
-      name: newName.trim(),
-      email: newEmail.trim(),
-      role: newRole,
-      status: newStatus,
-      registeredAt: today,
-      lastSeen: "—",
-      testsCompleted: 0,
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result: PageResponse<AdminUserItem> = await usersApi.list({
+        offset: (page - 1) * PAGE_SIZE,
+        limit: PAGE_SIZE,
+        search: search.trim() || undefined,
+        roleId: roleId === "all" ? undefined : (roleId as UUID),
+      })
+      setItems(result.items)
+      setTotal(result.total)
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось загрузить пользователей",
+      )
+    } finally {
+      setLoading(false)
     }
+  }, [page, search, roleId])
 
-    setUsers((prev) => [user, ...prev])
-    resetForm()
-    setSheetOpen(false)
-    setPage(1)
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  async function handleAssignRole(userId: UUID, newRoleId: UUID | null) {
+    try {
+      await rolesApi.assignToUser(userId, newRoleId)
+      await load()
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось обновить роль пользователя",
+      )
+    }
   }
 
-  const handleOpenSheet = (open: boolean) => {
-    setSheetOpen(open)
-    if (!open) resetForm()
-  }
-
-  const renderPaginationItems = () => {
-    const items: (number | "ellipsis")[] = []
-
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) items.push(i)
-    } else {
-      items.push(1)
-
-      if (page > 3) items.push("ellipsis")
-
-      const start = Math.max(2, page - 1)
-      const end = Math.min(totalPages - 1, page + 1)
-
-      for (let i = start; i <= end; i++) {
-        items.push(i)
+  const renderPaginationItems = useMemo(
+    () => () => {
+      const arr: (number | "ellipsis")[] = []
+      if (totalPages <= 5) {
+        for (let i = 1; i <= totalPages; i++) arr.push(i)
+      } else {
+        arr.push(1)
+        if (page > 3) arr.push("ellipsis")
+        const start = Math.max(2, page - 1)
+        const end = Math.min(totalPages - 1, page + 1)
+        for (let i = start; i <= end; i++) arr.push(i)
+        if (page < totalPages - 2) arr.push("ellipsis")
+        arr.push(totalPages)
       }
-
-      if (page < totalPages - 2) items.push("ellipsis")
-
-      items.push(totalPages)
-    }
-
-    return items.map((item, index) => {
-      if (item === "ellipsis") {
+      return arr.map((item, index) => {
+        if (item === "ellipsis") {
+          return (
+            <PaginationItem key={`ellipsis-${index}`}>
+              <PaginationEllipsis />
+            </PaginationItem>
+          )
+        }
         return (
-          <PaginationItem key={`ellipsis-${index}`}>
-            <PaginationEllipsis />
+          <PaginationItem key={item}>
+            <PaginationLink
+              href="#"
+              isActive={page === item}
+              onClick={(e) => {
+                e.preventDefault()
+                setPage(item)
+              }}
+            >
+              {item}
+            </PaginationLink>
           </PaginationItem>
         )
-      }
-
-      return (
-        <PaginationItem key={item}>
-          <PaginationLink
-            href="#"
-            isActive={page === item}
-            onClick={(e) => {
-              e.preventDefault()
-              setPage(item)
-            }}
-          >
-            {item}
-          </PaginationLink>
-        </PaginationItem>
-      )
-    })
-  }
+      })
+    },
+    [page, totalPages],
+  )
 
   return (
     <Layout>
@@ -388,92 +234,12 @@ export default function UsersPage() {
               Управление пользователями
             </h1>
             <p className="text-sm text-muted-foreground">
-              Список пользователей системы, роли и статусы доступа
+              Список пользователей системы и их роли
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-
-            <Sheet open={sheetOpen} onOpenChange={handleOpenSheet}>
-              <SheetTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить пользователя
-                </Button>
-              </SheetTrigger>
-
-              <SheetContent side="right" className="w-full sm:max-w-[560px] p-0">
-                <div className="flex h-full flex-col">
-                  <SheetHeader className="border-b px-6 py-5 text-left">
-                    <SheetTitle>Новый пользователь</SheetTitle>
-                    <SheetDescription>
-                      Быстрое добавление пользователя в систему
-                    </SheetDescription>
-                  </SheetHeader>
-
-                  <div className="flex-1 overflow-y-auto px-6 py-6">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Имя и фамилия</label>
-                        <Input
-                          placeholder="Иван Петров"
-                          value={newName}
-                          onChange={(e) => setNewName(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Email</label>
-                        <Input
-                          type="email"
-                          placeholder="ivan@company.ru"
-                          value={newEmail}
-                          onChange={(e) => setNewEmail(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Роль</label>
-                        <Select
-                          value={newRole}
-                          onValueChange={(value) => setNewRole(value as UserRole)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите роль" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Администратор">Администратор</SelectItem>
-                            <SelectItem value="Студент">Студент</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Статус приглашения</label>
-                        <Select
-                          value={newStatus}
-                          onValueChange={(value) => setNewStatus(value as UserStatus)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите статус" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Активен">Отправить сразу</SelectItem>
-                            <SelectItem value="Ожидает">Ожидает</SelectItem>
-                            <SelectItem value="Заблокирован">Заблокирован</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <Button className="mt-2 w-full" onClick={handleAddUser}>
-                        Отправить приглашение
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
 
@@ -481,9 +247,8 @@ export default function UsersPage() {
           <KpiCard
             icon={Users}
             label="Всего пользователей"
-            value={String(totalUsers)}
-            delta="+8.2% за месяц"
-            trend="up"
+            value={loading ? "…" : String(total)}
+            delta="по текущему фильтру"
             className="w-full"
           />
         </div>
@@ -492,7 +257,7 @@ export default function UsersPage() {
           <CardHeader>
             <CardTitle>Фильтры</CardTitle>
             <CardDescription>
-              Быстрый поиск и фильтрация списка пользователей
+              Поиск и фильтрация по роли
             </CardDescription>
           </CardHeader>
 
@@ -501,58 +266,48 @@ export default function UsersPage() {
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value)
-                    setPage(1)
-                  }}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Поиск по имени или email"
                   className="pl-9"
                 />
               </div>
 
               <Select
-                value={role}
+                value={roleId}
                 onValueChange={(value) => {
-                  setRole(value)
+                  setRoleId(value)
                   setPage(1)
                 }}
               >
-                <SelectTrigger className="w-full md:w-[220px]">
+                <SelectTrigger className="w-full md:w-[260px]">
                   <SelectValue placeholder="Роль" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все роли</SelectItem>
-                  <SelectItem value="Администратор">Администратор</SelectItem>
-                  <SelectItem value="Студент">Студент</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={status}
-                onValueChange={(value) => {
-                  setStatus(value)
-                  setPage(1)
-                }}
-              >
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="Статус" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все статусы</SelectItem>
-                  <SelectItem value="Активен">Активен</SelectItem>
-                  <SelectItem value="Ожидает">Ожидает</SelectItem>
-                  <SelectItem value="Заблокирован">Заблокирован</SelectItem>
+                  {allRoles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
         </Card>
 
+        {error ? (
+          <div className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600">
+            {error}
+          </div>
+        ) : null}
+
         <Card>
           <CardHeader>
             <CardTitle>Список пользователей</CardTitle>
-            <CardDescription>Найдено: {filteredUsers.length}</CardDescription>
+            <CardDescription>
+              {loading ? "Загрузка..." : `Найдено: ${total}`}
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -561,35 +316,49 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Пользователь</TableHead>
                   <TableHead>Роль</TableHead>
-                  <TableHead>Статус</TableHead>
                   <TableHead>Регистрация</TableHead>
-                  <TableHead>Последняя активность</TableHead>
+                  <TableHead>Последний вход</TableHead>
                   <TableHead className="w-[60px]" />
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {paginatedUsers.map((user) => (
+                {items.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{user.name}</span>
+                        <span className="font-medium">{fullName(user)}</span>
                         <span className="text-xs text-muted-foreground">
                           {user.email}
                         </span>
                       </div>
                     </TableCell>
 
-                    <TableCell>{user.role}</TableCell>
-
                     <TableCell>
-                      <Badge variant={getStatusVariant(user.status)}>
-                        {user.status}
-                      </Badge>
+                      {user.role ? (
+                        <Badge
+                          variant="secondary"
+                          style={
+                            user.role.color
+                              ? {
+                                  backgroundColor: `${user.role.color}22`,
+                                  color: user.role.color,
+                                  borderColor: `${user.role.color}55`,
+                                }
+                              : undefined
+                          }
+                        >
+                          {user.role.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Без роли
+                        </span>
+                      )}
                     </TableCell>
 
-                    <TableCell>{user.registeredAt}</TableCell>
-                    <TableCell>{user.lastSeen}</TableCell>
+                    <TableCell>{formatDate(user.registeredAt)}</TableCell>
+                    <TableCell>{formatDate(user.lastLoginAt)}</TableCell>
 
                     <TableCell>
                       <DropdownMenu>
@@ -599,11 +368,26 @@ export default function UsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
 
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Открыть</DropdownMenuItem>
-                          <DropdownMenuItem>Редактировать</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-500 focus:text-red-500">
-                            Заблокировать
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem disabled className="text-xs">
+                            Назначить роль
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {allRoles.map((r) => (
+                            <DropdownMenuItem
+                              key={r.id}
+                              onClick={() => handleAssignRole(user.id, r.id)}
+                            >
+                              {r.name}
+                              {user.role?.id === r.id ? " ✓" : ""}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-500 focus:text-red-500"
+                            onClick={() => handleAssignRole(user.id, null)}
+                          >
+                            Снять роль
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -611,10 +395,10 @@ export default function UsersPage() {
                   </TableRow>
                 ))}
 
-                {paginatedUsers.length === 0 && (
+                {!loading && items.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={5}
                       className="py-10 text-center text-muted-foreground"
                     >
                       Пользователи не найдены
@@ -626,15 +410,9 @@ export default function UsersPage() {
 
             <div className="flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-muted-foreground">
-                Показано{" "}
-                <span className="font-medium text-foreground">
-                  {filteredUsers.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}-
-                  {Math.min(page * PAGE_SIZE, filteredUsers.length)}
-                </span>{" "}
-                из{" "}
-                <span className="font-medium text-foreground">
-                  {filteredUsers.length}
-                </span>
+                Страница{" "}
+                <span className="font-medium text-foreground">{page}</span> из{" "}
+                <span className="font-medium text-foreground">{totalPages}</span>
               </div>
 
               <Pagination className="mx-0 w-full justify-end md:w-auto">
@@ -646,7 +424,9 @@ export default function UsersPage() {
                         e.preventDefault()
                         if (page > 1) setPage(page - 1)
                       }}
-                      className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        page === 1 ? "pointer-events-none opacity-50" : ""
+                      }
                     />
                   </PaginationItem>
 
@@ -660,7 +440,9 @@ export default function UsersPage() {
                         if (page < totalPages) setPage(page + 1)
                       }}
                       className={
-                        page === totalPages ? "pointer-events-none opacity-50" : ""
+                        page === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
                       }
                     />
                   </PaginationItem>

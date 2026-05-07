@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { MoreHorizontal, Plus, Search } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+
 import Layout from "@/pages/Layout.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,28 +14,12 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
 import {
   Pagination,
   PaginationContent,
@@ -52,85 +37,65 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { TestsStats } from "@/pages/tests/Tests-stats.tsx"
-import {
-  getTestStatusVariant,
-  initialTests,
-  type TestCategory,
-  type TestItem,
-  type TestStatus,
-} from "@/pages/tests/Tests-data.tsx"
+import { tests as testsApi } from "@/api/endpoints"
+import type { ExistingTest } from "@/api/types"
+import { ApiError } from "@/api/client"
 
 const PAGE_SIZE = 8
 
 export default function TestsPage() {
-  const [tests, setTests] = useState<TestItem[]>(initialTests)
-  const [search, setSearch] = useState("")
-  const [statusTab, setStatusTab] = useState("all")
-  const [category, setCategory] = useState("all")
-
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [newTitle, setNewTitle] = useState("")
-  const [newCategory, setNewCategory] = useState<TestCategory>("Личность")
-  const [newStatus, setNewStatus] = useState<TestStatus>("Черновик")
-  const [newQuestions, setNewQuestions] = useState("20")
-
+  const navigate = useNavigate()
+  const [items, setItems] = useState<ExistingTest[]>([])
+  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredTests = useMemo(() => {
-    return tests.filter((test) => {
-      const query = search.toLowerCase().trim()
-      const matchesSearch =
-        test.title.toLowerCase().includes(query) ||
-        test.author.toLowerCase().includes(query)
-      const matchesCategory = category === "all" || test.category === category
-      const matchesStatus = statusTab === "all" || test.status === statusTab
-      return matchesSearch && matchesCategory && matchesStatus
-    })
-  }, [tests, search, category, statusTab])
-
-  // ✅ Эти три нужны для TestsStats
-  const totalTests = tests.length
-  const publishedTests = tests.filter((t) => t.status === "Опубликован").length
-  const totalCompletions = tests.reduce((sum, t) => sum + t.completions, 0)
-
-  const totalPages = Math.max(1, Math.ceil(filteredTests.length / PAGE_SIZE))
-
-  const paginatedTests = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
-    return filteredTests.slice(start, start + PAGE_SIZE)
-  }, [filteredTests, page])
-
-  function resetForm() {
-    setNewTitle("")
-    setNewCategory("Личность")
-    setNewStatus("Черновик")
-    setNewQuestions("20")
-  }
-
-  function handleCreateTest() {
-    if (!newTitle.trim()) return
-    const today = new Date().toLocaleDateString("ru-RU")
-    const newTest: TestItem = {
-      id: String(Date.now()),
-      title: newTitle.trim(),
-      category: newCategory,
-      status: newStatus,
-      author: "Мария",
-      questions: Number(newQuestions) || 0,
-      completions: 0,
-      averageScore: 0,
-      createdAt: today,
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await testsApi.list({
+        offset: (page - 1) * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      })
+      setItems(result.items)
+      setTotal(result.total)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось загрузить тесты")
+    } finally {
+      setLoading(false)
     }
-    setTests((prev) => [newTest, ...prev])
-    resetForm()
-    setSheetOpen(false)
-    setPage(1)
-  }
+  }, [page])
 
-  const handleOpenSheet = (open: boolean) => {
-    setSheetOpen(open)
-    if (!open) resetForm()
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const filtered = items.filter((t) => {
+    const q = search.toLowerCase().trim()
+    if (!q) return true
+    return (
+      t.name.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q)
+    )
+  })
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("Удалить тест?")) return
+    try {
+      await testsApi.remove(id)
+      await load()
+    } catch (err) {
+      alert(
+        err instanceof ApiError
+          ? err.message
+          : "Не удалось удалить тест",
+      )
+    }
   }
 
   const renderPaginationItems = () => {
@@ -146,7 +111,6 @@ export default function TestsPage() {
       if (page < totalPages - 2) items.push("ellipsis")
       items.push(totalPages)
     }
-
     return items.map((item, index) => {
       if (item === "ellipsis") {
         return (
@@ -175,122 +139,30 @@ export default function TestsPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
-
-        {/* HEADER */}
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">
               Управление тестами
             </h1>
             <p className="text-sm text-muted-foreground">
-              Каталог тестов по психологическому тестированию, статусы
-              публикации и аналитика прохождения
+              Каталог тестов по психологическому тестированию
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-
-            <Sheet open={sheetOpen} onOpenChange={handleOpenSheet}>
-              <SheetTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Создать тест
-                </Button>
-              </SheetTrigger>
-
-              <SheetContent side="right" className="w-full p-0 sm:max-w-[560px]">
-                <div className="flex h-full flex-col">
-                  <SheetHeader className="border-b px-6 py-5 text-left">
-                    <SheetTitle>Новый тест</SheetTitle>
-                    <SheetDescription>
-                      Быстрое создание теста по психологическому тестированию
-                    </SheetDescription>
-                  </SheetHeader>
-
-                  <div className="flex-1 overflow-y-auto px-6 py-6">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Название теста</label>
-                        <Input
-                          placeholder="Например, Шкала тревожности"
-                          value={newTitle}
-                          onChange={(e) => setNewTitle(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Категория</label>
-                        <Select
-                          value={newCategory}
-                          onValueChange={(v) => setNewCategory(v as TestCategory)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите категорию" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Личность">Личность</SelectItem>
-                            <SelectItem value="Тревожность">Тревожность</SelectItem>
-                            <SelectItem value="Стресс">Стресс</SelectItem>
-                            <SelectItem value="Самооценка">Самооценка</SelectItem>
-                            <SelectItem value="Эмоциональный интеллект">
-                              Эмоциональный интеллект
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Статус</label>
-                        <Select
-                          value={newStatus}
-                          onValueChange={(v) => setNewStatus(v as TestStatus)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите статус" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Черновик">Черновик</SelectItem>
-                            <SelectItem value="Опубликован">Опубликован</SelectItem>
-                            <SelectItem value="Архив">Архив</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">Количество вопросов</label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={newQuestions}
-                          onChange={(e) => setNewQuestions(e.target.value)}
-                        />
-                      </div>
-
-                      <Button className="mt-2 w-full" onClick={handleCreateTest}>
-                        Создать тест
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+            <Button size="sm" onClick={() => navigate("/tests/create")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Создать тест
+            </Button>
           </div>
         </div>
 
-        {/* ✅ KPI — вставлен */}
-        <TestsStats
-          totalTests={totalTests}
-          publishedTests={publishedTests}
-          totalCompletions={totalCompletions}
-        />
-
-        {/* TABLE */}
         <Card>
           <CardHeader>
             <CardTitle>Каталог тестов</CardTitle>
             <CardDescription>
-              Поиск, фильтрация и навигация по тестам
+              {loading ? "Загрузка..." : `Всего тестов: ${total}`}
             </CardDescription>
           </CardHeader>
 
@@ -300,81 +172,53 @@ export default function TestsPage() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value)
-                    setPage(1)
-                  }}
-                  placeholder="Поиск по названию теста или автору"
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Поиск по названию или описанию"
                   className="pl-9"
                 />
               </div>
-
-              <Select
-                value={category}
-                onValueChange={(v) => { setCategory(v); setPage(1) }}
-              >
-                <SelectTrigger className="w-full lg:w-[260px]">
-                  <SelectValue placeholder="Категория" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все категории</SelectItem>
-                  <SelectItem value="Личность">Личность</SelectItem>
-                  <SelectItem value="Тревожность">Тревожность</SelectItem>
-                  <SelectItem value="Стресс">Стресс</SelectItem>
-                  <SelectItem value="Самооценка">Самооценка</SelectItem>
-                  <SelectItem value="Эмоциональный интеллект">
-                    Эмоциональный интеллект
-                  </SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
-            <Tabs
-              value={statusTab}
-              onValueChange={(v) => { setStatusTab(v); setPage(1) }}
-            >
-              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
-                <TabsTrigger value="all">Все</TabsTrigger>
-                <TabsTrigger value="Опубликован">Опубликованные</TabsTrigger>
-                <TabsTrigger value="Черновик">Черновики</TabsTrigger>
-                <TabsTrigger value="Архив">Архив</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {error ? (
+              <div className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600">
+                {error}
+              </div>
+            ) : null}
 
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Тест</TableHead>
-                  <TableHead>Категория</TableHead>
+                  <TableHead>Длительность</TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead>Автор</TableHead>
-                  <TableHead>Вопросов</TableHead>
-                  <TableHead>Прохождений</TableHead>
+                  <TableHead>Позиция</TableHead>
                   <TableHead className="w-[60px]" />
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {paginatedTests.map((test) => (
-                  <TableRow key={test.id}>
+                {filtered.map((test) => (
+                  <TableRow
+                    key={test.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/tests/${test.id}`)}
+                  >
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{test.title}</span>
-                        <span className="text-xs text-muted-foreground">
-                          Создан: {test.createdAt}
+                        <span className="font-medium">{test.name}</span>
+                        <span className="line-clamp-1 text-xs text-muted-foreground">
+                          {test.description}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{test.category}</TableCell>
+                    <TableCell>{test.durationMins} мин</TableCell>
                     <TableCell>
-                      <Badge variant={getTestStatusVariant(test.status)}>
-                        {test.status}
+                      <Badge variant={test.isActive ? "default" : "secondary"}>
+                        {test.isActive ? "Опубликован" : "Черновик"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{test.author}</TableCell>
-                    <TableCell>{test.questions}</TableCell>
-                    <TableCell>{test.completions}</TableCell>
-                    <TableCell>
+                    <TableCell>{test.position}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -382,11 +226,16 @@ export default function TestsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Открыть</DropdownMenuItem>
-                          <DropdownMenuItem>Редактировать</DropdownMenuItem>
-                          <DropdownMenuItem>Дублировать</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-500 focus:text-red-500">
-                            Архивировать
+                          <DropdownMenuItem
+                            onClick={() => navigate(`/tests/${test.id}`)}
+                          >
+                            Открыть
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-500 focus:text-red-500"
+                            onClick={() => handleDelete(test.id)}
+                          >
+                            Удалить
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -394,10 +243,10 @@ export default function TestsPage() {
                   </TableRow>
                 ))}
 
-                {paginatedTests.length === 0 && (
+                {!loading && filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={5}
                       className="py-10 text-center text-muted-foreground"
                     >
                       Тесты не найдены
@@ -409,16 +258,10 @@ export default function TestsPage() {
 
             <div className="flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-muted-foreground">
-                Показано{" "}
+                Страница{" "}
+                <span className="font-medium text-foreground">{page}</span> из{" "}
                 <span className="font-medium text-foreground">
-                  {filteredTests.length === 0
-                    ? 0
-                    : (page - 1) * PAGE_SIZE + 1}
-                  -{Math.min(page * PAGE_SIZE, filteredTests.length)}
-                </span>{" "}
-                из{" "}
-                <span className="font-medium text-foreground">
-                  {filteredTests.length}
+                  {totalPages}
                 </span>
               </div>
 
@@ -431,7 +274,9 @@ export default function TestsPage() {
                         e.preventDefault()
                         if (page > 1) setPage(page - 1)
                       }}
-                      className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        page === 1 ? "pointer-events-none opacity-50" : ""
+                      }
                     />
                   </PaginationItem>
 
@@ -445,7 +290,9 @@ export default function TestsPage() {
                         if (page < totalPages) setPage(page + 1)
                       }}
                       className={
-                        page === totalPages ? "pointer-events-none opacity-50" : ""
+                        page === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
                       }
                     />
                   </PaginationItem>

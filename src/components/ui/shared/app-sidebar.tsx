@@ -29,10 +29,12 @@ import {
 } from "lucide-react"
 
 import { useLocation, useNavigate } from "react-router-dom"
+import { useAuth } from "@/api/auth-context"
 
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { profile, logout } = useAuth()
 
   const items = [
     { label: "Главная", icon: LucideHome, path: "/home" },
@@ -41,6 +43,12 @@ export function AppSidebar() {
     { label: "Тесты", icon: FileText, path: "/tests" },
     { label: "Статистика", icon: BarChart, path: "/stats" },
   ]
+
+  const fullName = profile
+    ? [profile.surname, profile.name, profile.patronymic ?? ""]
+        .filter((part) => part && part.trim().length > 0)
+        .join(" ")
+    : "—"
 
   return (
     <Sidebar collapsible="icon">
@@ -77,7 +85,7 @@ export function AppSidebar() {
             <SidebarMenuButton className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                <span>Maria</span>
+                <span className="truncate">{fullName}</span>
               </div>
 
               <ChevronUp className="h-4 w-4 opacity-60" />
@@ -85,16 +93,21 @@ export function AppSidebar() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => console.log("profile")}>
-              Profile
-            </DropdownMenuItem>
+            {profile ? (
+              <DropdownMenuItem disabled className="text-xs">
+                {profile.email}
+              </DropdownMenuItem>
+            ) : null}
 
             <DropdownMenuItem
-              onClick={() => console.log("logout")}
+              onClick={() => {
+                logout()
+                navigate("/", { replace: true })
+              }}
               className="text-red-500"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Выйти
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
