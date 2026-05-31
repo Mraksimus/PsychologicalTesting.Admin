@@ -1,10 +1,7 @@
 export type UUID = string
 
-export type Token = {
-  userId: UUID
-  value: string
-  createdAt: string
-  expiresAt: string
+export type AuthResponse = {
+  token: string
 }
 
 export type Permission =

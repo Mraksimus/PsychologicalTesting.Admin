@@ -2,6 +2,7 @@ import { apiFetch } from "./client"
 import type {
   AdminSessionItem,
   AdminUserItem,
+  AuthResponse,
   ExistingQuestion,
   ExistingRole,
   ExistingTest,
@@ -10,7 +11,6 @@ import type {
   NewTest,
   PageResponse,
   TestDetails,
-  Token,
   UUID,
 } from "./types"
 
@@ -18,7 +18,7 @@ import type {
 
 export const auth = {
   login: (email: string, password: string) =>
-    apiFetch<Token>("/auth/login", {
+    apiFetch<AuthResponse>("/auth/login", {
       method: "POST",
       auth: false,
       body: { email, password },
@@ -30,7 +30,7 @@ export const auth = {
     email: string
     password: string
   }) =>
-    apiFetch<Token>("/auth/register", {
+    apiFetch<AuthResponse>("/auth/register", {
       method: "POST",
       auth: false,
       body: data,
