@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import {
-  BarChart,
+  ClipboardList,
   FileText,
   Shield,
+  Tags,
   Users,
   User,
   LucideHome,
@@ -41,7 +42,8 @@ export function AppSidebar() {
     { label: "Пользователи", icon: Users, path: "/users" },
     { label: "Роли", icon: Shield, path: "/roles" },
     { label: "Тесты", icon: FileText, path: "/tests" },
-    { label: "Статистика", icon: BarChart, path: "/stats" },
+    { label: "Опросы", icon: ClipboardList, path: "/surveys" },
+    { label: "Категории", icon: Tags, path: "/categories" },
   ]
 
   const fullName = profile

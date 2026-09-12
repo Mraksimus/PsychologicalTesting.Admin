@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { MoreHorizontal, Plus, Search } from "lucide-react"
+import { BarChart3, MoreHorizontal, Plus, Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import Layout from "@/pages/Layout.tsx"
@@ -47,35 +47,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { tests as testsApi } from "@/api/endpoints"
-import type { ExistingTest } from "@/api/types"
+import { surveys as surveysApi } from "@/api/endpoints"
+import type { ExistingSurvey } from "@/api/types"
 import { ApiError } from "@/api/client"
 
 const PAGE_SIZE = 8
 
-export default function TestsPage() {
+export default function SurveysPage() {
   const navigate = useNavigate()
-  const [items, setItems] = useState<ExistingTest[]>([])
+  const [items, setItems] = useState<ExistingSurvey[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<ExistingTest | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<ExistingSurvey | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const result = await testsApi.list({
+      const result = await surveysApi.list({
         offset: (page - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,
       })
       setItems(result.items)
       setTotal(result.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить тесты")
+      setError(err instanceof Error ? err.message : "Не удалось загрузить опросы")
     } finally {
       setLoading(false)
     }
@@ -85,12 +85,12 @@ export default function TestsPage() {
     void load()
   }, [load])
 
-  const filtered = items.filter((t) => {
+  const filtered = items.filter((s) => {
     const q = search.toLowerCase().trim()
     if (!q) return true
     return (
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q)
+      s.name.toLowerCase().includes(q) ||
+      s.description.toLowerCase().includes(q)
     )
   })
 
@@ -101,7 +101,7 @@ export default function TestsPage() {
     setIsDeleting(true)
     setError(null)
     try {
-      await testsApi.remove(confirmDelete.id)
+      await surveysApi.remove(confirmDelete.id)
       setConfirmDelete(null)
       await load()
     } catch (err) {
@@ -110,7 +110,7 @@ export default function TestsPage() {
           ? err.message
           : err instanceof Error
           ? err.message
-          : "Не удалось удалить тест",
+          : "Не удалось удалить опрос",
       )
     } finally {
       setIsDeleting(false)
@@ -161,27 +161,27 @@ export default function TestsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">
-              Управление тестами
+              Управление опросами
             </h1>
             <p className="text-sm text-muted-foreground">
-              Каталог тестов по психологическому тестированию
+              Опросы для сбора обратной связи и мнений пользователей
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-            <Button size="sm" onClick={() => navigate("/tests/create")}>
+            <Button size="sm" onClick={() => navigate("/surveys/create")}>
               <Plus className="mr-2 h-4 w-4" />
-              Создать тест
+              Создать опрос
             </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Каталог тестов</CardTitle>
+            <CardTitle>Каталог опросов</CardTitle>
             <CardDescription>
-              {loading ? "Загрузка..." : `Всего тестов: ${total}`}
+              {loading ? "Загрузка..." : `Всего опросов: ${total}`}
             </CardDescription>
           </CardHeader>
 
@@ -207,7 +207,7 @@ export default function TestsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Тест</TableHead>
+                  <TableHead>Опрос</TableHead>
                   <TableHead>Категория</TableHead>
                   <TableHead>Вопросы</TableHead>
                   <TableHead>Длительность</TableHead>
@@ -218,41 +218,41 @@ export default function TestsPage() {
               </TableHeader>
 
               <TableBody>
-                {filtered.map((test) => (
+                {filtered.map((survey) => (
                   <TableRow
-                    key={test.id}
+                    key={survey.id}
                     className="cursor-pointer"
-                    onClick={() => navigate(`/tests/${test.id}`)}
+                    onClick={() => navigate(`/surveys/${survey.id}`)}
                   >
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{test.name}</span>
+                        <span className="font-medium">{survey.name}</span>
                         <span className="line-clamp-1 text-xs text-muted-foreground">
-                          {test.description}
+                          {survey.description}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {test.category ? (
+                      {survey.category ? (
                         <span className="inline-flex items-center gap-1.5">
                           <span
                             className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: test.category.color }}
+                            style={{ backgroundColor: survey.category.color }}
                           />
-                          {test.category.icon} {test.category.name}
+                          {survey.category.icon} {survey.category.name}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell>{test.questionsCount ?? 0}</TableCell>
-                    <TableCell>{test.durationMins} мин</TableCell>
+                    <TableCell>{survey.questionsCount ?? 0}</TableCell>
+                    <TableCell>{survey.durationMins} мин</TableCell>
                     <TableCell>
-                      <Badge variant={test.isActive ? "default" : "secondary"}>
-                        {test.isActive ? "Опубликован" : "Черновик"}
+                      <Badge variant={survey.isActive ? "default" : "secondary"}>
+                        {survey.isActive ? "Опубликован" : "Черновик"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{test.position}</TableCell>
+                    <TableCell>{survey.position}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -262,13 +262,21 @@ export default function TestsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => navigate(`/tests/${test.id}`)}
+                            onClick={() => navigate(`/surveys/${survey.id}`)}
                           >
                             Открыть
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() =>
+                              navigate(`/surveys/${survey.id}/sessions`)
+                            }
+                          >
+                            <BarChart3 className="mr-2 h-4 w-4" />
+                            Результаты
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             className="text-red-500 focus:text-red-500"
-                            onClick={() => setConfirmDelete(test)}
+                            onClick={() => setConfirmDelete(survey)}
                           >
                             Удалить
                           </DropdownMenuItem>
@@ -284,7 +292,7 @@ export default function TestsPage() {
                       colSpan={7}
                       className="py-10 text-center text-muted-foreground"
                     >
-                      Тесты не найдены
+                      Опросы не найдены
                     </TableCell>
                   </TableRow>
                 )}
@@ -346,7 +354,7 @@ export default function TestsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить тест?</AlertDialogTitle>
+            <AlertDialogTitle>Удалить опрос?</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDelete
                 ? `«${confirmDelete.name}» будет удалён вместе со всеми вопросами и сессиями. Это действие нельзя отменить.`

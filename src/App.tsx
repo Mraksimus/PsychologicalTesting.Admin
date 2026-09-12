@@ -5,6 +5,10 @@ import UsersPage from "@/pages/users/Users.tsx"
 import TestsPage from "@/pages/tests/Tests.tsx"
 import TestCreate from "@/pages/createTests/TestCreate"
 import RolesPage from "@/pages/roles/Roles.tsx"
+import SurveysPage from "@/pages/surveys/Surveys.tsx"
+import SurveyCreate from "@/pages/surveys/SurveyCreate.tsx"
+import SurveySessionsPage from "@/pages/surveys/SurveySessions.tsx"
+import CategoriesPage from "@/pages/categories/Categories.tsx"
 import { RequireAuth } from "@/api/auth-context.tsx"
 
 export default function App() {
@@ -57,6 +61,46 @@ export default function App() {
           element={
             <RequireAuth>
               <TestCreate />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/surveys"
+          element={
+            <RequireAuth>
+              <SurveysPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/surveys/create"
+          element={
+            <RequireAuth>
+              <SurveyCreate />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/surveys/:surveyId"
+          element={
+            <RequireAuth>
+              <SurveyCreate />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/surveys/:surveyId/sessions"
+          element={
+            <RequireAuth>
+              <SurveySessionsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/categories"
+          element={
+            <RequireAuth>
+              <CategoriesPage />
             </RequireAuth>
           }
         />

@@ -2,9 +2,18 @@ import * as React from "react"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/ui/shared/app-sidebar"
 
+function readSidebarOpen(): boolean {
+  if (typeof document === "undefined") return true
+  const match = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("sidebar_state="))
+  if (!match) return true
+  return match.split("=")[1] !== "false"
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={readSidebarOpen()}>
       <div className="flex h-screen w-screen overflow-hidden">
         {/* Sidebar */}
         <AppSidebar />

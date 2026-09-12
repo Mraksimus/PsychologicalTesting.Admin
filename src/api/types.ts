@@ -13,6 +13,12 @@ export type Permission =
   | "QUESTIONS_EDIT"
   | "USERS_VIEW"
   | "SESSIONS_VIEW"
+  | "SURVEYS_VIEW"
+  | "SURVEYS_EDIT"
+  | "SURVEY_QUESTIONS_EDIT"
+  | "SURVEY_SESSIONS_VIEW"
+  | "CATEGORIES_VIEW"
+  | "CATEGORIES_EDIT"
 
 export type ExistingRole = {
   id: UUID
@@ -38,6 +44,22 @@ export type AdminUserItem = {
   lastLoginAt?: string | null
 }
 
+export type ExistingCategory = {
+  id: UUID
+  name: string
+  color: string
+  icon: string
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type NewCategory = {
+  name: string
+  color: string
+  icon: string
+}
+
 export type ExistingTest = {
   id: UUID
   name: string
@@ -45,6 +67,9 @@ export type ExistingTest = {
   transcript: string
   durationMins: string
   isActive: boolean
+  categoryId?: UUID | null
+  category?: ExistingCategory | null
+  questionsCount?: number
   createdAt: string
   updatedAt: string
   position: number
@@ -56,6 +81,7 @@ export type NewTest = {
   transcript: string
   durationMins: string
   isActive: boolean
+  categoryId?: UUID | null
 }
 
 export type Answer = {
@@ -64,7 +90,7 @@ export type Answer = {
   score: number
 }
 
-export type ChoiceMod = "SINGLE" | "SCALE"
+export type ChoiceMod = "SINGLE" | "SCALE" | "MULTIPLE"
 
 export type ChoiceContent = {
   type: "Choice"
@@ -83,7 +109,8 @@ export type QuestionContent = ChoiceContent | InputContent
 
 export type ExistingQuestion = {
   id: UUID
-  testId: UUID
+  testId?: UUID | null
+  surveyId?: UUID | null
   content: QuestionContent
   position: number
 }
@@ -116,4 +143,52 @@ export type PageResponse<T> = {
   offset: number
   limit: number
   items: T[]
+}
+
+// ───────── Surveys ─────────
+
+export type ExistingSurvey = {
+  id: UUID
+  name: string
+  description: string
+  durationMins: string
+  isActive: boolean
+  categoryId?: UUID | null
+  category?: ExistingCategory | null
+  questionsCount?: number
+  createdAt: string
+  updatedAt: string
+  position: number
+}
+
+export type NewSurvey = {
+  name: string
+  description: string
+  durationMins: string
+  isActive: boolean
+  categoryId?: UUID | null
+}
+
+export type SurveyDetails = {
+  survey: ExistingSurvey
+  questions: ExistingQuestion[]
+}
+
+export type SurveySessionAnswer = {
+  questionId: UUID
+  selectedIndex: number | null
+  selectedIndices?: number[] | null
+  textAnswer?: string | null
+}
+
+export type AdminSurveySessionItem = {
+  id: UUID
+  userId: UUID
+  userFullName: string
+  userEmail: string
+  surveyId: UUID
+  status: SessionStatus
+  answers: SurveySessionAnswer[]
+  createdAt: string
+  closedAt?: string | null
 }

@@ -1,15 +1,21 @@
 import { apiFetch } from "./client"
 import type {
   AdminSessionItem,
+  AdminSurveySessionItem,
   AdminUserItem,
   AuthResponse,
+  ExistingCategory,
   ExistingQuestion,
   ExistingRole,
+  ExistingSurvey,
   ExistingTest,
+  NewCategory,
   NewQuestionRequest,
   NewRole,
+  NewSurvey,
   NewTest,
   PageResponse,
+  SurveyDetails,
   TestDetails,
   UUID,
 } from "./types"
@@ -164,6 +170,135 @@ export const sessions = {
   ) =>
     apiFetch<PageResponse<AdminSessionItem>>(
       `/admin/tests/${testId}/sessions`,
+      { query: params },
+    ),
+}
+
+// ───────── Surveys (admin) ─────────
+
+export const surveys = {
+  list: (params: { offset: number; limit: number }) =>
+    apiFetch<PageResponse<ExistingSurvey>>("/admin/surveys", {
+      query: params,
+    }),
+  byId: (id: UUID) => apiFetch<SurveyDetails>(`/admin/surveys/${id}`),
+  create: (body: NewSurvey) =>
+    apiFetch<ExistingSurvey>("/admin/surveys/new", {
+      method: "POST",
+      body,
+    }),
+  update: (id: UUID, body: NewSurvey) =>
+    apiFetch<void>(`/admin/surveys/${id}`, {
+      method: "PATCH",
+      body,
+    }),
+  remove: (id: UUID) =>
+    apiFetch<void>(`/admin/surveys/${id}`, {
+      method: "DELETE",
+    }),
+  reorder: (id: UUID, position: number) =>
+    apiFetch<void>(`/admin/surveys/${id}/position`, {
+      method: "PUT",
+      body: { position },
+    }),
+}
+
+// ───────── Survey questions (admin) ─────────
+
+export const surveyQuestions = {
+  list: (surveyId: UUID) =>
+    apiFetch<ExistingQuestion[]>(`/admin/surveys/${surveyId}/questions`),
+  create: (surveyId: UUID, body: NewQuestionRequest) =>
+    apiFetch<ExistingQuestion>(`/admin/surveys/${surveyId}/questions/new`, {
+      method: "POST",
+      body,
+    }),
+  update: (surveyId: UUID, questionId: UUID, body: NewQuestionRequest) =>
+    apiFetch<void>(`/admin/surveys/${surveyId}/questions/${questionId}`, {
+      method: "PATCH",
+      body,
+    }),
+  remove: (surveyId: UUID, questionId: UUID) =>
+    apiFetch<void>(`/admin/surveys/${surveyId}/questions/${questionId}`, {
+      method: "DELETE",
+    }),
+  reorder: (surveyId: UUID, questionId: UUID, position: number) =>
+    apiFetch<void>(
+      `/admin/surveys/${surveyId}/questions/${questionId}/position`,
+      {
+        method: "PUT",
+        body: { position },
+      },
+    ),
+}
+
+// ───────── Categories (admin) ─────────
+
+export const categories = {
+  list: () => apiFetch<ExistingCategory[]>("/admin/categories"),
+  create: (body: NewCategory) =>
+    apiFetch<ExistingCategory>("/admin/categories/new", {
+      method: "POST",
+      body,
+    }),
+  update: (id: UUID, body: NewCategory) =>
+    apiFetch<void>(`/admin/categories/${id}`, {
+      method: "PATCH",
+      body,
+    }),
+  remove: (id: UUID) =>
+    apiFetch<void>(`/admin/categories/${id}`, {
+      method: "DELETE",
+    }),
+}
+
+// ───────── Statistics (admin) ─────────
+
+export interface ActivityPoint {
+  date: string
+  testingCount: number
+  surveyCount: number
+}
+
+export interface TopItem {
+  id: UUID
+  name: string
+  completions: number
+}
+
+export interface RecentEvent {
+  kind: "TESTING" | "SURVEY"
+  userDisplayName: string
+  itemName: string
+  at: string
+}
+
+export interface AdminStatistics {
+  usersCount: number
+  testsCount: number
+  surveysCount: number
+  categoriesCount: number
+  completedTestingSessions: number
+  completedSurveySessions: number
+  activityByDay: ActivityPoint[]
+  topTests: TopItem[]
+  topSurveys: TopItem[]
+  recentEvents: RecentEvent[]
+}
+
+export const statistics = {
+  get: () => apiFetch<AdminStatistics>("/admin/statistics"),
+}
+
+// ───────── Survey sessions (admin) ─────────
+
+export const surveySessions = {
+  bySurvey: (
+    surveyId: UUID,
+    params: { offset: number; limit: number },
+  ) =>
+    apiFetch<PageResponse<AdminSurveySessionItem>>(
+      `/admin/surveys/${surveyId}/sessions`,
       { query: params },
     ),
 }
