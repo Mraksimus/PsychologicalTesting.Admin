@@ -66,8 +66,8 @@ export default function Login() {
 
           <div className="space-y-4">
             <Input
-              type="email"
-              placeholder="Введи email"
+              type="text"
+              placeholder="Введи логин"
               className="h-12"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
