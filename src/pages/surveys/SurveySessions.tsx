@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronRight, Download, Search } from "lucide-react"
 
-import Layout from "@/pages/Layout.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { downloadCsv } from "@/lib/csv"
 import {
   Table,
   TableBody,
@@ -84,6 +85,9 @@ export default function SurveySessionsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
 
   const load = useCallback(async () => {
     if (!surveyId) return
@@ -118,10 +122,49 @@ export default function SurveySessionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  const filteredSessions = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    const from = dateFrom ? new Date(dateFrom).getTime() : null
+    const to = dateTo ? new Date(dateTo).getTime() + 24 * 60 * 60 * 1000 - 1 : null
+
+    return items.filter((s) => {
+      if (q) {
+        const haystack = `${s.userFullName ?? ""} ${s.userEmail ?? ""}`.toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+      if (from !== null || to !== null) {
+        const stamp = new Date(s.closedAt ?? s.createdAt).getTime()
+        if (from !== null && stamp < from) return false
+        if (to !== null && stamp > to) return false
+      }
+      return true
+    })
+  }, [items, search, dateFrom, dateTo])
+
   const completedSessions = useMemo(
-    () => items.filter((s) => s.status === "COMPLETED"),
-    [items],
+    () => filteredSessions.filter((s) => s.status === "COMPLETED"),
+    [filteredSessions],
   )
+
+  function exportCsv() {
+    const header = [
+      "id",
+      "user_full_name",
+      "user_email",
+      "status",
+      "created_at",
+      "closed_at",
+    ]
+    const rows = filteredSessions.map((s) => [
+      s.id,
+      s.userFullName ?? "",
+      s.userEmail ?? "",
+      s.status,
+      s.createdAt,
+      s.closedAt ?? "",
+    ])
+    downloadCsv(`survey-sessions-${surveyId ?? "export"}.csv`, header, rows)
+  }
 
   const answersStats = useMemo(() => {
     // For each question, count how many times each option was picked
@@ -210,8 +253,7 @@ export default function SurveySessionsPage() {
   }
 
   return (
-    <Layout>
-      <div className="flex flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -380,12 +422,69 @@ export default function SurveySessionsPage() {
         {/* Sessions table */}
         <Card>
           <CardHeader>
-            <CardTitle>Прохождения</CardTitle>
-            <CardDescription>
-              {loading ? "Загрузка..." : `Всего сессий: ${total}`}
-            </CardDescription>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle>Прохождения</CardTitle>
+                <CardDescription>
+                  {loading
+                    ? "Загрузка..."
+                    : `Всего: ${total}${
+                        filteredSessions.length !== items.length
+                          ? ` · показано: ${filteredSessions.length}`
+                          : ""
+                      }`}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportCsv}
+                disabled={filteredSessions.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Экспорт CSV
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Поиск по ФИО или email"
+                  className="pl-9"
+                />
+              </div>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="md:w-[170px]"
+                title="Дата от"
+              />
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="md:w-[170px]"
+                title="Дата до"
+              />
+              {(search || dateFrom || dateTo) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("")
+                    setDateFrom("")
+                    setDateTo("")
+                  }}
+                >
+                  Сбросить
+                </Button>
+              )}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -399,7 +498,7 @@ export default function SurveySessionsPage() {
               </TableHeader>
 
               <TableBody>
-                {items.map((s) => {
+                {filteredSessions.map((s) => {
                   const isOpen = expanded.has(s.id)
                   const status = statusLabel(s.status)
                   return (
@@ -595,7 +694,6 @@ export default function SurveySessionsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </Layout>
+    </div>
   )
 }

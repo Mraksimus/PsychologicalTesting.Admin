@@ -1,6 +1,22 @@
+import * as React from "react"
 import { useCallback, useEffect, useState } from "react"
-import { MoreHorizontal, Plus, Search } from "lucide-react"
+import { ArrowDown, ArrowUp, GripVertical, MoreHorizontal, Plus, Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 import Layout from "@/pages/Layout.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
@@ -63,6 +79,11 @@ export default function TestsPage() {
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<ExistingTest | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [reordering, setReordering] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -95,6 +116,35 @@ export default function TestsPage() {
   })
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const canReorder = search.trim().length === 0
+
+  async function reorder(sourceIndex: number, destinationIndex: number) {
+    if (sourceIndex === destinationIndex) return
+    const moved = items[sourceIndex]
+    const targetPosition = items[destinationIndex].position
+    const next = arrayMove(items, sourceIndex, destinationIndex)
+    setItems(next)
+    setReordering(true)
+    setError(null)
+    try {
+      await testsApi.reorder(moved.id, targetPosition)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить порядок")
+      await load()
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const from = items.findIndex((t) => t.id === active.id)
+    const to = items.findIndex((t) => t.id === over.id)
+    if (from === -1 || to === -1) return
+    void reorder(from, to)
+  }
 
   async function performDelete() {
     if (!confirmDelete) return
@@ -204,92 +254,64 @@ export default function TestsPage() {
               </div>
             ) : null}
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Тест</TableHead>
-                  <TableHead>Категория</TableHead>
-                  <TableHead>Вопросы</TableHead>
-                  <TableHead>Длительность</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Позиция</TableHead>
-                  <TableHead className="w-[60px]" />
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {filtered.map((test) => (
-                  <TableRow
-                    key={test.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate(`/tests/${test.id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{test.name}</span>
-                        <span className="line-clamp-1 text-xs text-muted-foreground">
-                          {test.description}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {test.category ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <span
-                            className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: test.category.color }}
-                          />
-                          {test.category.icon} {test.category.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{test.questionsCount ?? 0}</TableCell>
-                    <TableCell>{test.durationMins} мин</TableCell>
-                    <TableCell>
-                      <Badge variant={test.isActive ? "default" : "secondary"}>
-                        {test.isActive ? "Опубликован" : "Черновик"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{test.position}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/tests/${test.id}`)}
-                          >
-                            Открыть
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-500 focus:text-red-500"
-                            onClick={() => setConfirmDelete(test)}
-                          >
-                            Удалить
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-                {!loading && filtered.length === 0 && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-10 text-center text-muted-foreground"
-                    >
-                      Тесты не найдены
-                    </TableCell>
+                    <TableHead className="w-[80px]">Порядок</TableHead>
+                    <TableHead>Тест</TableHead>
+                    <TableHead>Категория</TableHead>
+                    <TableHead>Вопросы</TableHead>
+                    <TableHead>Длительность</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead className="w-[60px]" />
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+
+                <TableBody>
+                  <SortableContext
+                    items={filtered.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filtered.map((test, idx) => (
+                      <SortableTestRow
+                        key={test.id}
+                        test={test}
+                        index={idx}
+                        canReorder={canReorder}
+                        reordering={reordering}
+                        total={filtered.length}
+                        onOpen={() => navigate(`/tests/${test.id}`)}
+                        onDelete={() => setConfirmDelete(test)}
+                        onMoveUp={() => reorder(idx, idx - 1)}
+                        onMoveDown={() => reorder(idx, idx + 1)}
+                      />
+                    ))}
+                  </SortableContext>
+
+                  {!loading && filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-10 text-center text-muted-foreground"
+                      >
+                        Тесты не найдены
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </DndContext>
+
+            {!canReorder ? (
+              <p className="text-xs text-muted-foreground">
+                Изменение порядка недоступно при активном поиске.
+              </p>
+            ) : null}
 
             <div className="flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-muted-foreground">
@@ -369,5 +391,136 @@ export default function TestsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </Layout>
+  )
+}
+
+interface SortableTestRowProps {
+  test: ExistingTest
+  index: number
+  total: number
+  canReorder: boolean
+  reordering: boolean
+  onOpen: () => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+}
+
+function SortableTestRow({
+  test,
+  index,
+  total,
+  canReorder,
+  reordering,
+  onOpen,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+}: SortableTestRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: test.id, disabled: !canReorder })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  }
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="cursor-pointer"
+      onClick={onOpen}
+    >
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            disabled={!canReorder}
+            className="cursor-grab rounded p-1 text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            title={canReorder ? "Перетащить" : "Отключите поиск, чтобы менять порядок"}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="flex flex-col">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              disabled={!canReorder || reordering || index === 0}
+              onClick={onMoveUp}
+              title="Вверх"
+            >
+              <ArrowUp className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              disabled={!canReorder || reordering || index === total - 1}
+              onClick={onMoveDown}
+              title="Вниз"
+            >
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="font-medium">{test.name}</span>
+          <span className="line-clamp-1 text-xs text-muted-foreground">
+            {test.description}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {test.category ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: test.category.color }}
+            />
+            {test.category.icon} {test.category.name}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell>{test.questionsCount ?? 0}</TableCell>
+      <TableCell>{test.durationMins} мин</TableCell>
+      <TableCell>
+        <Badge variant={test.isActive ? "default" : "secondary"}>
+          {test.isActive ? "Опубликован" : "Черновик"}
+        </Badge>
+      </TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onOpen}>Открыть</DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-500 focus:text-red-500"
+              onClick={onDelete}
+            >
+              Удалить
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   )
 }

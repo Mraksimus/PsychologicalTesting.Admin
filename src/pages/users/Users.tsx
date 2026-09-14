@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowUpRight, MoreHorizontal, Search, Users } from "lucide-react"
+import { ArrowUpRight, MoreHorizontal, Plus, Search, Users } from "lucide-react"
 
 import Layout from "@/pages/Layout.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
@@ -20,6 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,6 +128,19 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createSaving, setCreateSaving] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const emptyForm = {
+    name: "",
+    surname: "",
+    patronymic: "",
+    email: "",
+    password: "",
+    roleId: "__none__",
+  }
+  const [createForm, setCreateForm] = useState(emptyForm)
+
   // Debounce поиска
   useEffect(() => {
     const t = setTimeout(() => {
@@ -168,6 +190,43 @@ export default function UsersPage() {
   }, [load])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  async function handleCreateUser() {
+    setCreateError(null)
+    if (
+      !createForm.name.trim() ||
+      !createForm.surname.trim() ||
+      !createForm.email.trim() ||
+      !createForm.password.trim()
+    ) {
+      setCreateError("Заполните имя, фамилию, email и пароль")
+      return
+    }
+    setCreateSaving(true)
+    try {
+      await usersApi.create({
+        name: createForm.name,
+        surname: createForm.surname,
+        patronymic: createForm.patronymic || null,
+        email: createForm.email,
+        password: createForm.password,
+        roleId: createForm.roleId === "__none__" ? null : (createForm.roleId as UUID),
+      })
+      setCreateOpen(false)
+      setCreateForm(emptyForm)
+      await load()
+    } catch (err) {
+      setCreateError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось создать пользователя",
+      )
+    } finally {
+      setCreateSaving(false)
+    }
+  }
 
   async function handleAssignRole(userId: UUID, newRoleId: UUID | null) {
     try {
@@ -240,6 +299,10 @@ export default function UsersPage() {
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Создать пользователя
+            </Button>
           </div>
         </div>
 
@@ -452,6 +515,124 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!createSaving) {
+            setCreateOpen(open)
+            if (!open) {
+              setCreateForm(emptyForm)
+              setCreateError(null)
+            }
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Новый пользователь</DialogTitle>
+            <DialogDescription>
+              Заполните основные поля. Пароль отправляется в открытом виде — сообщите его пользователю через безопасный канал.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-user-surname">Фамилия</Label>
+                <Input
+                  id="new-user-surname"
+                  value={createForm.surname}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, surname: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-user-name">Имя</Label>
+                <Input
+                  id="new-user-name"
+                  value={createForm.name}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-user-patronymic">Отчество</Label>
+              <Input
+                id="new-user-patronymic"
+                value={createForm.patronymic}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, patronymic: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-user-email">Email</Label>
+              <Input
+                id="new-user-email"
+                type="email"
+                autoComplete="off"
+                value={createForm.email}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, email: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-user-password">Пароль</Label>
+              <Input
+                id="new-user-password"
+                type="text"
+                autoComplete="new-password"
+                value={createForm.password}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({ ...prev, password: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Роль</Label>
+              <Select
+                value={createForm.roleId}
+                onValueChange={(v) =>
+                  setCreateForm((prev) => ({ ...prev, roleId: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Без роли" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Без роли</SelectItem>
+                  {allRoles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {createError ? (
+              <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-sm text-red-600">
+                {createError}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              disabled={createSaving}
+            >
+              Отмена
+            </Button>
+            <Button onClick={handleCreateUser} disabled={createSaving}>
+              {createSaving ? "Создаём..." : "Создать"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   )
 }

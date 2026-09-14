@@ -1,4 +1,21 @@
+import * as React from "react"
+import type { ReactNode } from "react"
 import { useCallback, useEffect, useState } from "react"
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
@@ -191,6 +208,21 @@ export default function TestCreatePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  )
+
+  function handleQuestionsDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setQuestions((prev) => {
+      const from = prev.findIndex((q) => q.localId === active.id)
+      const to = prev.findIndex((q) => q.localId === over.id)
+      if (from === -1 || to === -1) return prev
+      return arrayMove(prev, from, to)
+    })
+  }
+
   const load = useCallback(async () => {
     if (!testId) return
     setLoading(true)
@@ -348,6 +380,14 @@ export default function TestCreatePage() {
         } else {
           const created = await questionsApi.create(savedId, { content })
           newDrafts.push({ ...q, persistedId: created.id })
+        }
+      }
+
+      // Persist question order for saved items.
+      for (let i = 0; i < newDrafts.length; i++) {
+        const persistedId = newDrafts[i].persistedId
+        if (persistedId) {
+          await questionsApi.reorder(savedId, persistedId, i)
         }
       }
       setQuestions(newDrafts)
@@ -550,11 +590,31 @@ export default function TestCreatePage() {
 
         {/* Questions */}
         <TabsContent value="questions" className="mt-4 space-y-3">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleQuestionsDragEnd}
+          >
+            <SortableContext
+              items={questions.map((q) => q.localId)}
+              strategy={verticalListSortingStrategy}
+            >
           {questions.map((q, i) => (
-            <Card key={q.localId}>
+            <SortableWrapper key={q.localId} id={q.localId}>
+              {({ setActivatorNodeRef, attributes, listeners }) => (
+            <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
-                  <GripVertical className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <button
+                    type="button"
+                    ref={setActivatorNodeRef}
+                    {...attributes}
+                    {...listeners}
+                    className="mt-2 cursor-grab rounded text-muted-foreground hover:text-foreground"
+                    title="Перетащить"
+                  >
+                    <GripVertical className="h-4 w-4 shrink-0" />
+                  </button>
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-muted-foreground">
@@ -706,7 +766,11 @@ export default function TestCreatePage() {
                 )}
               </CardContent>
             </Card>
+              )}
+            </SortableWrapper>
           ))}
+            </SortableContext>
+          </DndContext>
 
           <Button variant="outline" className="w-full" onClick={addQuestion}>
             <Plus className="mr-2 h-4 w-4" />
@@ -796,6 +860,43 @@ export default function TestCreatePage() {
           ) : null}
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+interface SortableWrapperProps {
+  id: string
+  children: (bag: {
+    setActivatorNodeRef: (element: HTMLElement | null) => void
+    attributes: React.HTMLAttributes<HTMLElement>
+    listeners: React.HTMLAttributes<HTMLElement> | undefined
+  }) => ReactNode
+}
+
+function SortableWrapper({ id, children }: SortableWrapperProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({
+        setActivatorNodeRef,
+        attributes: attributes as React.HTMLAttributes<HTMLElement>,
+        listeners: listeners as React.HTMLAttributes<HTMLElement> | undefined,
+      })}
     </div>
   )
 }

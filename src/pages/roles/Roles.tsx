@@ -64,6 +64,7 @@ const ALL_PERMISSIONS: { value: Permission; label: string }[] = [
   { value: "SURVEY_QUESTIONS_EDIT", label: "Редактирование вопросов опроса" },
   { value: "SURVEY_SESSIONS_VIEW", label: "Просмотр результатов опросов" },
   { value: "USERS_VIEW", label: "Просмотр пользователей" },
+  { value: "USERS_EDIT", label: "Создание пользователей" },
   { value: "SESSIONS_VIEW", label: "Просмотр сессий" },
   { value: "CATEGORIES_VIEW", label: "Просмотр категорий" },
   { value: "CATEGORIES_EDIT", label: "Редактирование категорий" },

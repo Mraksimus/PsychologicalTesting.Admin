@@ -23,6 +23,7 @@ import {
   CheckSquare,
   ChevronRight,
   ClipboardList,
+  Download,
   FileText,
   FolderTree,
   Plus,
@@ -32,6 +33,8 @@ import { QuickActions } from "./_components/QuickActions.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
 import { statistics, type AdminStatistics } from "@/api/endpoints.ts"
 import { Skeleton } from "@/components/ui/skeleton.tsx"
+import { Button } from "@/components/ui/button.tsx"
+import { downloadCsv } from "@/lib/csv"
 
 interface KpiProps {
   icon: React.ElementType
@@ -84,6 +87,45 @@ function formatEventTime(iso: string): string {
   return at.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
 }
 
+function exportStatistics(data: AdminStatistics) {
+  const stamp = new Date().toISOString().slice(0, 10)
+
+  downloadCsv(
+    `mindcheck-summary-${stamp}.csv`,
+    ["metric", "value"],
+    [
+      ["Пользователи", data.usersCount],
+      ["Тесты", data.testsCount],
+      ["Опросы", data.surveysCount],
+      ["Категории", data.categoriesCount],
+      ["Завершённых тестовых сессий", data.completedTestingSessions],
+      ["Завершённых опросных сессий", data.completedSurveySessions],
+    ],
+  )
+
+  downloadCsv(
+    `mindcheck-activity-${stamp}.csv`,
+    ["date", "testing_completions", "survey_completions"],
+    data.activityByDay.map((p) => [p.date, p.testingCount, p.surveyCount]),
+  )
+
+  if (data.topTests.length > 0) {
+    downloadCsv(
+      `mindcheck-top-tests-${stamp}.csv`,
+      ["name", "completions"],
+      data.topTests.map((t) => [t.name, t.completions]),
+    )
+  }
+
+  if (data.topSurveys.length > 0) {
+    downloadCsv(
+      `mindcheck-top-surveys-${stamp}.csv`,
+      ["name", "completions"],
+      data.topSurveys.map((t) => [t.name, t.completions]),
+    )
+  }
+}
+
 const quickActions = [
   { icon: Plus, label: "Создать тест", desc: "Добавить новый тест", href: "/tests" },
   { icon: ClipboardList, label: "Создать опрос", desc: "Добавить новый опрос", href: "/surveys" },
@@ -133,6 +175,15 @@ function Dashboard() {
         </div>
         <div className="flex gap-2">
           <ThemeToggle />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => data && exportStatistics(data)}
+            disabled={!data}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Экспорт CSV
+          </Button>
         </div>
       </div>
 

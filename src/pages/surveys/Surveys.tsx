@@ -1,6 +1,22 @@
+import * as React from "react"
 import { useCallback, useEffect, useState } from "react"
-import { BarChart3, MoreHorizontal, Plus, Search } from "lucide-react"
+import { ArrowDown, ArrowUp, BarChart3, GripVertical, MoreHorizontal, Plus, Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 import Layout from "@/pages/Layout.tsx"
 import { ThemeToggle } from "@/components/ui/shared/theme-toggle.tsx"
@@ -63,6 +79,11 @@ export default function SurveysPage() {
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<ExistingSurvey | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [reordering, setReordering] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -95,6 +116,35 @@ export default function SurveysPage() {
   })
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const canReorder = search.trim().length === 0
+
+  async function reorder(sourceIndex: number, destinationIndex: number) {
+    if (sourceIndex === destinationIndex) return
+    const moved = items[sourceIndex]
+    const targetPosition = items[destinationIndex].position
+    const next = arrayMove(items, sourceIndex, destinationIndex)
+    setItems(next)
+    setReordering(true)
+    setError(null)
+    try {
+      await surveysApi.reorder(moved.id, targetPosition)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось изменить порядок")
+      await load()
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const from = items.findIndex((t) => t.id === active.id)
+    const to = items.findIndex((t) => t.id === over.id)
+    if (from === -1 || to === -1) return
+    void reorder(from, to)
+  }
 
   async function performDelete() {
     if (!confirmDelete) return
@@ -204,100 +254,67 @@ export default function SurveysPage() {
               </div>
             ) : null}
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Опрос</TableHead>
-                  <TableHead>Категория</TableHead>
-                  <TableHead>Вопросы</TableHead>
-                  <TableHead>Длительность</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Позиция</TableHead>
-                  <TableHead className="w-[60px]" />
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {filtered.map((survey) => (
-                  <TableRow
-                    key={survey.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate(`/surveys/${survey.id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{survey.name}</span>
-                        <span className="line-clamp-1 text-xs text-muted-foreground">
-                          {survey.description}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {survey.category ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <span
-                            className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: survey.category.color }}
-                          />
-                          {survey.category.icon} {survey.category.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{survey.questionsCount ?? 0}</TableCell>
-                    <TableCell>{survey.durationMins} мин</TableCell>
-                    <TableCell>
-                      <Badge variant={survey.isActive ? "default" : "secondary"}>
-                        {survey.isActive ? "Опубликован" : "Черновик"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{survey.position}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/surveys/${survey.id}`)}
-                          >
-                            Открыть
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(`/surveys/${survey.id}/sessions`)
-                            }
-                          >
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            Результаты
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-500 focus:text-red-500"
-                            onClick={() => setConfirmDelete(survey)}
-                          >
-                            Удалить
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-                {!loading && filtered.length === 0 && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-10 text-center text-muted-foreground"
-                    >
-                      Опросы не найдены
-                    </TableCell>
+                    <TableHead className="w-[80px]">Порядок</TableHead>
+                    <TableHead>Опрос</TableHead>
+                    <TableHead>Категория</TableHead>
+                    <TableHead>Вопросы</TableHead>
+                    <TableHead>Длительность</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead className="w-[60px]" />
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+
+                <TableBody>
+                  <SortableContext
+                    items={filtered.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filtered.map((survey, idx) => (
+                      <SortableSurveyRow
+                        key={survey.id}
+                        survey={survey}
+                        index={idx}
+                        total={filtered.length}
+                        canReorder={canReorder}
+                        reordering={reordering}
+                        onOpen={() => navigate(`/surveys/${survey.id}`)}
+                        onOpenSessions={() =>
+                          navigate(`/surveys/${survey.id}/sessions`)
+                        }
+                        onDelete={() => setConfirmDelete(survey)}
+                        onMoveUp={() => reorder(idx, idx - 1)}
+                        onMoveDown={() => reorder(idx, idx + 1)}
+                      />
+                    ))}
+                  </SortableContext>
+
+                  {!loading && filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-10 text-center text-muted-foreground"
+                      >
+                        Опросы не найдены
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </DndContext>
+
+            {!canReorder ? (
+              <p className="text-xs text-muted-foreground">
+                Изменение порядка недоступно при активном поиске.
+              </p>
+            ) : null}
 
             <div className="flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-muted-foreground">
@@ -377,5 +394,142 @@ export default function SurveysPage() {
         </AlertDialogContent>
       </AlertDialog>
     </Layout>
+  )
+}
+
+interface SortableSurveyRowProps {
+  survey: ExistingSurvey
+  index: number
+  total: number
+  canReorder: boolean
+  reordering: boolean
+  onOpen: () => void
+  onOpenSessions: () => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+}
+
+function SortableSurveyRow({
+  survey,
+  index,
+  total,
+  canReorder,
+  reordering,
+  onOpen,
+  onOpenSessions,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+}: SortableSurveyRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: survey.id, disabled: !canReorder })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  }
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className="cursor-pointer"
+      onClick={onOpen}
+    >
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            disabled={!canReorder}
+            className="cursor-grab rounded p-1 text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            title={canReorder ? "Перетащить" : "Отключите поиск, чтобы менять порядок"}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="flex flex-col">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              disabled={!canReorder || reordering || index === 0}
+              onClick={onMoveUp}
+              title="Вверх"
+            >
+              <ArrowUp className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              disabled={!canReorder || reordering || index === total - 1}
+              onClick={onMoveDown}
+              title="Вниз"
+            >
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="font-medium">{survey.name}</span>
+          <span className="line-clamp-1 text-xs text-muted-foreground">
+            {survey.description}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {survey.category ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: survey.category.color }}
+            />
+            {survey.category.icon} {survey.category.name}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell>{survey.questionsCount ?? 0}</TableCell>
+      <TableCell>{survey.durationMins} мин</TableCell>
+      <TableCell>
+        <Badge variant={survey.isActive ? "default" : "secondary"}>
+          {survey.isActive ? "Опубликован" : "Черновик"}
+        </Badge>
+      </TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onOpen}>Открыть</DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenSessions}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Результаты
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-500 focus:text-red-500"
+              onClick={onDelete}
+            >
+              Удалить
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   )
 }

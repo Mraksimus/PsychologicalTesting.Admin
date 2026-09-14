@@ -12,6 +12,7 @@ export type Permission =
   | "TESTS_EDIT"
   | "QUESTIONS_EDIT"
   | "USERS_VIEW"
+  | "USERS_EDIT"
   | "SESSIONS_VIEW"
   | "SURVEYS_VIEW"
   | "SURVEYS_EDIT"

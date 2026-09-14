@@ -104,6 +104,18 @@ export const users = {
     }),
   byId: (id: UUID) =>
     apiFetch<AdminUserItem>(`/admin/users/${id}`),
+  create: (body: {
+    name: string
+    surname: string
+    patronymic?: string | null
+    email: string
+    password: string
+    roleId?: UUID | null
+  }) =>
+    apiFetch<AdminUserItem>("/admin/users/new", {
+      method: "POST",
+      body,
+    }),
 }
 
 // ───────── Tests (admin) ─────────
