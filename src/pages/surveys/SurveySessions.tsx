@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/pagination"
 
 import {
-  surveyQuestions as surveyQuestionsApi,
   surveySessions as surveySessionsApi,
   surveys as surveysApi,
 } from "@/api/endpoints"
