@@ -89,7 +89,6 @@ type QuestionKind = "SINGLE" | "MULTIPLE" | "SCALE" | "INPUT"
 type DraftAnswer = {
   index: number
   text: string
-  score: number
 }
 
 type DraftQuestion = {
@@ -108,7 +107,7 @@ function uid(): string {
 }
 
 function makeAnswer(index: number): DraftAnswer {
-  return { index, text: "", score: 0 }
+  return { index, text: "" }
 }
 
 function makeQuestion(kind: QuestionKind = "SINGLE"): DraftQuestion {
@@ -121,7 +120,6 @@ function makeQuestion(kind: QuestionKind = "SINGLE"): DraftQuestion {
         ? [1, 2, 3, 4, 5].map((n, i) => ({
             index: i,
             text: n === 1 ? "Совсем нет" : n === 5 ? "Полностью да" : String(n),
-            score: n,
           }))
         : [makeAnswer(0), makeAnswer(1)],
     correctInputs: [],
@@ -170,7 +168,6 @@ function toContent(q: DraftQuestion): QuestionContent {
   const options: Answer[] = q.options.map((o, i) => ({
     index: i,
     text: o.text,
-    score: o.score,
   }))
   const choice: ChoiceContent = {
     type: "Choice",
@@ -728,17 +725,6 @@ export default function TestCreatePage() {
                               })
                             }
                             className="flex-1"
-                          />
-                          <Input
-                            type="number"
-                            value={option.score}
-                            onChange={(e) =>
-                              updateOption(q.localId, oi, {
-                                score: Number(e.target.value) || 0,
-                              })
-                            }
-                            className="w-20"
-                            title="Балл"
                           />
                           <Button
                             variant="ghost"

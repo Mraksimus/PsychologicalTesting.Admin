@@ -160,7 +160,6 @@ function toContent(q: DraftQuestion): QuestionContent {
   const options: Answer[] = q.options.map((o, i) => ({
     index: i,
     text: o.text,
-    score: 0,
   }))
   const choice: ChoiceContent = {
     type: "Choice",

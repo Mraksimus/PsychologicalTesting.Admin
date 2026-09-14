@@ -88,7 +88,6 @@ export type NewTest = {
 export type Answer = {
   index: number
   text: string
-  score: number
 }
 
 export type ChoiceMod = "SINGLE" | "SCALE" | "MULTIPLE"
