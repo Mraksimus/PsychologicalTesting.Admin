@@ -39,7 +39,9 @@ function buildUrl(
   path: string,
   query?: RequestOptions["query"],
 ): string {
-  const url = new URL(path, API_BASE_URL)
+  const base = API_BASE_URL.replace(/\/+$/, "")
+  const suffix = path.startsWith("/") ? path : `/${path}`
+  const url = new URL(`${base}${suffix}`)
   if (query) {
     for (const [key, raw] of Object.entries(query)) {
       if (raw === undefined || raw === null || raw === "") continue
