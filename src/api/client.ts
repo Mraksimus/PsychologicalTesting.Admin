@@ -17,12 +17,13 @@ export function setToken(value: string | null): void {
 }
 
 export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly body: unknown,
-    message: string,
-  ) {
+  readonly status: number
+  readonly body: unknown
+
+  constructor(status: number, body: unknown, message: string) {
     super(message)
+    this.status = status
+    this.body = body
   }
 }
 
