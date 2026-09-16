@@ -503,15 +503,15 @@ export default function SurveySessionsPage() {
                 </Button>
               )}
             </div>
-            <Table>
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[36px]" />
-                  <TableHead>Пользователь</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Создана</TableHead>
-                  <TableHead>Завершена</TableHead>
+                  <TableHead className="w-[22%]">Пользователь</TableHead>
+                  <TableHead className="w-[26%]">Email</TableHead>
+                  <TableHead className="w-[14%]">Статус</TableHead>
+                  <TableHead className="w-[18%]">Создана</TableHead>
+                  <TableHead className="w-[18%]">Завершена</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -533,10 +533,10 @@ export default function SurveySessionsPage() {
                             <ChevronRight className="h-4 w-4" />
                           )}
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="truncate font-medium">
                           {s.userFullName || "—"}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="truncate text-muted-foreground">
                           {s.userEmail}
                         </TableCell>
                         <TableCell>
@@ -631,15 +631,15 @@ export default function SurveySessionsPage() {
                                   return (
                                     <div
                                       key={q.id}
-                                      className="rounded-md border bg-background p-3"
+                                      className="rounded-md border bg-background p-3 break-words [overflow-wrap:anywhere]"
                                     >
                                       <div className="text-xs text-muted-foreground">
                                         Вопрос {qi + 1}
                                       </div>
-                                      <div className="mt-0.5 text-sm font-medium">
+                                      <div className="mt-0.5 text-sm font-medium break-words [overflow-wrap:anywhere]">
                                         {q.content.text}
                                       </div>
-                                      <div className="mt-2 text-sm">
+                                      <div className="mt-2 text-sm break-words [overflow-wrap:anywhere]">
                                         {body}
                                       </div>
                                     </div>

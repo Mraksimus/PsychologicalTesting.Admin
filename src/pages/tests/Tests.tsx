@@ -483,9 +483,9 @@ function SortableTestRow({
           </div>
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex flex-col">
-          <span className="font-medium">{test.name}</span>
+      <TableCell className="max-w-[420px]">
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{test.name}</span>
           <span className="line-clamp-1 text-xs text-muted-foreground">
             {test.description}
           </span>

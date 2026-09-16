@@ -492,9 +492,9 @@ function SortableSurveyRow({
           </div>
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex flex-col">
-          <span className="font-medium">{survey.name}</span>
+      <TableCell className="max-w-[420px]">
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{survey.name}</span>
           <span className="line-clamp-1 text-xs text-muted-foreground">
             {survey.description}
           </span>
