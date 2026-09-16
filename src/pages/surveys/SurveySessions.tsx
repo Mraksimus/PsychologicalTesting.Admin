@@ -345,7 +345,7 @@ export default function SurveySessionsPage() {
                           ).map((a, idx) => (
                             <div
                               key={idx}
-                              className="rounded-md border bg-background p-2 text-xs"
+                              className="rounded-md border bg-background p-2 text-xs break-words [overflow-wrap:anywhere]"
                             >
                               <span className="text-muted-foreground">
                                 {a.user || "—"}:
