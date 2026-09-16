@@ -84,6 +84,7 @@ export default function SurveySessionsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [expandedFreeText, setExpandedFreeText] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState("")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
@@ -338,7 +339,10 @@ export default function SurveySessionsPage() {
                             Пока никто не ответил.
                           </div>
                         ) : (
-                          textAnswers.slice(0, 5).map((a, idx) => (
+                          (expandedFreeText.has(q.id)
+                            ? textAnswers
+                            : textAnswers.slice(0, 5)
+                          ).map((a, idx) => (
                             <div
                               key={idx}
                               className="rounded-md border bg-background p-2 text-xs"
@@ -346,14 +350,28 @@ export default function SurveySessionsPage() {
                               <span className="text-muted-foreground">
                                 {a.user || "—"}:
                               </span>{" "}
-                              <span className="text-foreground">{a.text}</span>
+                              <span className="whitespace-pre-wrap text-foreground">{a.text}</span>
                             </div>
                           ))
                         )}
                         {textAnswers.length > 5 ? (
-                          <div className="text-xs text-muted-foreground">
-                            и ещё {textAnswers.length - 5}...
-                          </div>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-xs"
+                            onClick={() =>
+                              setExpandedFreeText((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(q.id)) next.delete(q.id)
+                                else next.add(q.id)
+                                return next
+                              })
+                            }
+                          >
+                            {expandedFreeText.has(q.id)
+                              ? "Свернуть"
+                              : `Показать все (${textAnswers.length})`}
+                          </Button>
                         ) : null}
                       </div>
                     </div>
