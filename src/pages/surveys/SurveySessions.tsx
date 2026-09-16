@@ -277,6 +277,7 @@ export default function SurveySessionsPage() {
             <ThemeToggle />
             {survey ? (
               <Button
+                size="sm"
                 variant="outline"
                 onClick={() => navigate(`/surveys/${survey.id}`)}
               >

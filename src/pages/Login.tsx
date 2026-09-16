@@ -29,11 +29,13 @@ export default function Login() {
       navigate("/home", { replace: true })
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(
-          err.status === 401
-            ? "Неверный email или пароль"
-            : err.message,
-        )
+        if (err.status === 401) {
+          setError("Неверный email или пароль")
+        } else if (err.status === 403) {
+          setError("У этого аккаунта нет доступа к админ-панели")
+        } else {
+          setError(err.message)
+        }
       } else {
         setError("Не удалось войти. Попробуйте позже.")
       }

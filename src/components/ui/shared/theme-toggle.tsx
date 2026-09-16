@@ -7,7 +7,7 @@ import type { ComponentProps } from "react"
 
 type ThemeToggleProps = Pick<ComponentProps<typeof Button>, "size" | "variant" | "className">
 
-export function ThemeToggle({ size = "icon", variant = "outline", className }: ThemeToggleProps) {
+export function ThemeToggle({ size = "icon-sm", variant = "outline", className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme()
 
   return (

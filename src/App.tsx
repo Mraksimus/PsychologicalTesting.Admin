@@ -27,7 +27,7 @@ export default function App() {
         <Route
           path="/users"
           element={
-            <RequireAuth>
+            <RequireAuth permission="USERS_VIEW">
               <UsersPage />
             </RequireAuth>
           }
@@ -35,7 +35,7 @@ export default function App() {
         <Route
           path="/roles"
           element={
-            <RequireAuth>
+            <RequireAuth permission="ROLES_VIEW">
               <RolesPage />
             </RequireAuth>
           }
@@ -43,7 +43,7 @@ export default function App() {
         <Route
           path="/tests"
           element={
-            <RequireAuth>
+            <RequireAuth permission="TESTS_VIEW">
               <TestsPage />
             </RequireAuth>
           }
@@ -51,7 +51,7 @@ export default function App() {
         <Route
           path="/tests/create"
           element={
-            <RequireAuth>
+            <RequireAuth permission="TESTS_EDIT">
               <TestCreate />
             </RequireAuth>
           }
@@ -59,7 +59,7 @@ export default function App() {
         <Route
           path="/tests/:testId"
           element={
-            <RequireAuth>
+            <RequireAuth permission="TESTS_VIEW">
               <TestCreate />
             </RequireAuth>
           }
@@ -67,7 +67,7 @@ export default function App() {
         <Route
           path="/surveys"
           element={
-            <RequireAuth>
+            <RequireAuth permission="SURVEYS_VIEW">
               <SurveysPage />
             </RequireAuth>
           }
@@ -75,7 +75,7 @@ export default function App() {
         <Route
           path="/surveys/create"
           element={
-            <RequireAuth>
+            <RequireAuth permission="SURVEYS_EDIT">
               <SurveyCreate />
             </RequireAuth>
           }
@@ -83,7 +83,7 @@ export default function App() {
         <Route
           path="/surveys/:surveyId"
           element={
-            <RequireAuth>
+            <RequireAuth permission="SURVEYS_VIEW">
               <SurveyCreate />
             </RequireAuth>
           }
@@ -91,7 +91,7 @@ export default function App() {
         <Route
           path="/surveys/:surveyId/sessions"
           element={
-            <RequireAuth>
+            <RequireAuth permission="SURVEY_SESSIONS_VIEW">
               <SurveySessionsPage />
             </RequireAuth>
           }
@@ -99,7 +99,7 @@ export default function App() {
         <Route
           path="/categories"
           element={
-            <RequireAuth>
+            <RequireAuth permission="CATEGORIES_VIEW">
               <CategoriesPage />
             </RequireAuth>
           }

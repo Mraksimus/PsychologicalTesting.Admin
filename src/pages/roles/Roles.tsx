@@ -51,6 +51,7 @@ import {
 import { roles as rolesApi } from "@/api/endpoints"
 import type { ExistingRole, NewRole, Permission } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 const ALL_PERMISSIONS: { value: Permission; label: string }[] = [
   { value: "ADMIN", label: "Полный доступ (ADMIN)" },
@@ -83,6 +84,8 @@ const emptyForm: FormState = {
 }
 
 export default function RolesPage() {
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission("ROLES_EDIT")
   const [items, setItems] = useState<ExistingRole[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -219,12 +222,14 @@ export default function RolesPage() {
             <ThemeToggle />
 
             <Sheet open={sheetOpen} onOpenChange={handleOpenSheet}>
-              <SheetTrigger asChild>
-                <Button size="sm" onClick={openCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Новая роль
-                </Button>
-              </SheetTrigger>
+              {canEdit ? (
+                <SheetTrigger asChild>
+                  <Button size="sm" onClick={openCreate}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Новая роль
+                  </Button>
+                </SheetTrigger>
+              ) : null}
 
               <SheetContent
                 side="right"
@@ -370,8 +375,8 @@ export default function RolesPage() {
                 {sorted.map((role) => (
                   <TableRow
                     key={role.id}
-                    className="cursor-pointer"
-                    onClick={() => openEdit(role)}
+                    className={canEdit ? "cursor-pointer" : ""}
+                    onClick={canEdit ? () => openEdit(role) : undefined}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -400,6 +405,7 @@ export default function RolesPage() {
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
+                      {canEdit ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -443,6 +449,7 @@ export default function RolesPage() {
                           </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

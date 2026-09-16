@@ -83,6 +83,7 @@ import type {
   QuestionContent,
 } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 type QuestionKind = "SINGLE" | "MULTIPLE" | "SCALE" | "INPUT"
 
@@ -185,6 +186,9 @@ function toContent(q: DraftQuestion): QuestionContent {
 
 export default function TestCreatePage() {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission("TESTS_EDIT")
+  const canEditQuestions = hasPermission("QUESTIONS_EDIT")
   const { testId } = useParams<{ testId?: string }>()
   const isEdit = Boolean(testId)
 
@@ -471,24 +475,27 @@ export default function TestCreatePage() {
 
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
-          {isActive ? (
-            <Button onClick={() => save(true)} disabled={saving}>
-              {saving ? "Сохраняем..." : "Сохранить"}
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => save(false)}
-                disabled={saving}
-              >
-                {saving ? "Сохраняем..." : "Сохранить как черновик"}
+          {canEdit ? (
+            isActive ? (
+              <Button size="sm" onClick={() => save(true)} disabled={saving}>
+                {saving ? "Сохраняем..." : "Сохранить"}
               </Button>
-              <Button onClick={() => save(true)} disabled={saving}>
-                {saving ? "Публикуем..." : "Опубликовать"}
-              </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => save(false)}
+                  disabled={saving}
+                >
+                  {saving ? "Сохраняем..." : "Сохранить как черновик"}
+                </Button>
+                <Button size="sm" onClick={() => save(true)} disabled={saving}>
+                  {saving ? "Публикуем..." : "Опубликовать"}
+                </Button>
+              </>
+            )
+          ) : null}
         </div>
       </div>
 
@@ -758,10 +765,12 @@ export default function TestCreatePage() {
             </SortableContext>
           </DndContext>
 
-          <Button variant="outline" className="w-full" onClick={addQuestion}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить вопрос
-          </Button>
+          {canEditQuestions ? (
+            <Button variant="outline" className="w-full" onClick={addQuestion}>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить вопрос
+            </Button>
+          ) : null}
         </TabsContent>
 
         {/* Interpretation */}
@@ -794,17 +803,23 @@ export default function TestCreatePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                variant={isActive ? "secondary" : "default"}
-                onClick={() => save(!isActive)}
-                disabled={saving}
-              >
-                {isActive ? "Снять с публикации" : "Опубликовать"}
-              </Button>
+              {canEdit ? (
+                <Button
+                  variant={isActive ? "secondary" : "default"}
+                  onClick={() => save(!isActive)}
+                  disabled={saving}
+                >
+                  {isActive ? "Снять с публикации" : "Опубликовать"}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Нет прав на изменение статуса.
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          {test ? (
+          {test && canEdit ? (
             <Card className="border-red-200 dark:border-red-900">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-red-600 dark:text-red-400">

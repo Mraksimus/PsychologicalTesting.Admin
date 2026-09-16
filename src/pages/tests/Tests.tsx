@@ -66,11 +66,14 @@ import {
 import { tests as testsApi } from "@/api/endpoints"
 import type { ExistingTest } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 const PAGE_SIZE = 8
 
 export default function TestsPage() {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission("TESTS_EDIT")
   const [items, setItems] = useState<ExistingTest[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -220,10 +223,12 @@ export default function TestsPage() {
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-            <Button size="sm" onClick={() => navigate("/tests/create")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Создать тест
-            </Button>
+            {canEdit ? (
+              <Button size="sm" onClick={() => navigate("/tests/create")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Создать тест
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -282,8 +287,9 @@ export default function TestsPage() {
                         key={test.id}
                         test={test}
                         index={idx}
-                        canReorder={canReorder}
+                        canReorder={canReorder && canEdit}
                         reordering={reordering}
+                        canEdit={canEdit}
                         total={filtered.length}
                         onOpen={() => navigate(`/tests/${test.id}`)}
                         onDelete={() => setConfirmDelete(test)}
@@ -400,6 +406,7 @@ interface SortableTestRowProps {
   total: number
   canReorder: boolean
   reordering: boolean
+  canEdit: boolean
   onOpen: () => void
   onDelete: () => void
   onMoveUp: () => void
@@ -412,6 +419,7 @@ function SortableTestRow({
   total,
   canReorder,
   reordering,
+  canEdit,
   onOpen,
   onDelete,
   onMoveUp,
@@ -512,12 +520,14 @@ function SortableTestRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onOpen}>Открыть</DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-red-500 focus:text-red-500"
-              onClick={onDelete}
-            >
-              Удалить
-            </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem
+                className="text-red-500 focus:text-red-500"
+                onClick={onDelete}
+              >
+                Удалить
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>

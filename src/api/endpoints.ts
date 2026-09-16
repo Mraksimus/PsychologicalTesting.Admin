@@ -15,6 +15,7 @@ import type {
   NewSurvey,
   NewTest,
   PageResponse,
+  Permission,
   SurveyDetails,
   TestDetails,
   UUID,
@@ -24,7 +25,7 @@ import type {
 
 export const auth = {
   login: (email: string, password: string) =>
-    apiFetch<AuthResponse>("/auth/login", {
+    apiFetch<AuthResponse>("/auth/admin/login", {
       method: "POST",
       auth: false,
       body: { email, password },
@@ -41,6 +42,17 @@ export const auth = {
       auth: false,
       body: data,
     }),
+}
+
+// ───────── Admin me ─────────
+
+export type AdminMeResponse = {
+  role: ExistingRole | null
+  permissions: Permission[]
+}
+
+export const adminMe = {
+  get: () => apiFetch<AdminMeResponse>("/admin/me"),
 }
 
 // ───────── Profile ─────────

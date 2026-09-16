@@ -9,13 +9,16 @@ import {
 import type { ReactNode } from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import { ApiError, getToken, setToken } from "./client"
-import { auth, profile } from "./endpoints"
+import { adminMe, auth, profile } from "./endpoints"
+import type { Permission } from "./types"
 
 type Profile = Awaited<ReturnType<typeof profile.me>>
 
 type AuthState = {
   token: string | null
   profile: Profile | null
+  permissions: Permission[]
+  hasPermission: (perm: Permission) => boolean
   loading: boolean
   error: string | null
   login: (email: string, password: string) => Promise<void>
@@ -28,25 +31,44 @@ const AuthContext = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setLocalToken] = useState<string | null>(getToken())
   const [profileData, setProfile] = useState<Profile | null>(null)
+  const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState<boolean>(!!getToken())
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     if (!getToken()) {
       setProfile(null)
+      setPermissions([])
       setLoading(false)
       return
     }
     try {
       setLoading(true)
-      const me = await profile.me()
+      const [me, meAdmin] = await Promise.all([
+        profile.me(),
+        adminMe.get().catch((err) => {
+          // If forbidden, drop admin access
+          if (err instanceof ApiError && err.status === 403) {
+            return { role: null, permissions: [] as Permission[] }
+          }
+          throw err
+        }),
+      ])
       setProfile(me)
+      setPermissions(meAdmin.permissions)
       setError(null)
+      if (meAdmin.permissions.length === 0) {
+        // Not an admin — invalidate token
+        setToken(null)
+        setLocalToken(null)
+        setProfile(null)
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setToken(null)
         setLocalToken(null)
         setProfile(null)
+        setPermissions([])
       }
       setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
@@ -63,8 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await auth.login(email, password)
       setToken(result.token)
       setLocalToken(result.token)
-      const me = await profile.me()
+      const [me, meAdmin] = await Promise.all([
+        profile.me(),
+        adminMe.get(),
+      ])
       setProfile(me)
+      setPermissions(meAdmin.permissions)
     },
     [],
   )
@@ -73,19 +99,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setLocalToken(null)
     setProfile(null)
+    setPermissions([])
   }, [])
+
+  const hasPermission = useCallback(
+    (perm: Permission) =>
+      permissions.includes("ADMIN") || permissions.includes(perm),
+    [permissions],
+  )
 
   const value = useMemo<AuthState>(
     () => ({
       token,
       profile: profileData,
+      permissions,
+      hasPermission,
       loading,
       error,
       login,
       logout,
       refresh,
     }),
-    [token, profileData, loading, error, login, logout, refresh],
+    [token, profileData, permissions, hasPermission, loading, error, login, logout, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -100,8 +135,14 @@ export function useAuth(): AuthState {
   return ctx
 }
 
-export function RequireAuth({ children }: { children: ReactNode }) {
-  const { token, loading } = useAuth()
+export function RequireAuth({
+  children,
+  permission,
+}: {
+  children: ReactNode
+  permission?: Permission
+}) {
+  const { token, loading, hasPermission, permissions } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -114,6 +155,14 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!token) {
     return <Navigate to="/" state={{ from: location }} replace />
+  }
+
+  if (permissions.length === 0) {
+    return <Navigate to="/" replace />
+  }
+
+  if (permission && !hasPermission(permission)) {
+    return <Navigate to="/home" replace />
   }
 
   return <>{children}</>

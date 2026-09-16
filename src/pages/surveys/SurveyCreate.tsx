@@ -82,6 +82,7 @@ import type {
   QuestionContent,
 } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 type QuestionKind = "SINGLE" | "MULTIPLE" | "SCALE" | "INPUT"
 
@@ -177,6 +178,9 @@ function toContent(q: DraftQuestion): QuestionContent {
 
 export default function SurveyCreatePage() {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission("SURVEYS_EDIT")
+  const canEditQuestions = hasPermission("SURVEY_QUESTIONS_EDIT")
   const { surveyId } = useParams<{ surveyId?: string }>()
   const isEdit = Boolean(surveyId)
 
@@ -445,32 +449,36 @@ export default function SurveyCreatePage() {
 
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
-          {survey ? (
+          {survey && hasPermission("SURVEY_SESSIONS_VIEW") ? (
             <Button
+              size="sm"
               variant="outline"
               onClick={() => navigate(`/surveys/${survey.id}/sessions`)}
             >
               Результаты
             </Button>
           ) : null}
-          {isActive ? (
-            <Button onClick={() => save(true)} disabled={saving}>
-              {saving ? "Сохраняем..." : "Сохранить"}
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => save(false)}
-                disabled={saving}
-              >
-                {saving ? "Сохраняем..." : "Сохранить как черновик"}
+          {canEdit ? (
+            isActive ? (
+              <Button size="sm" onClick={() => save(true)} disabled={saving}>
+                {saving ? "Сохраняем..." : "Сохранить"}
               </Button>
-              <Button onClick={() => save(true)} disabled={saving}>
-                {saving ? "Публикуем..." : "Опубликовать"}
-              </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => save(false)}
+                  disabled={saving}
+                >
+                  {saving ? "Сохраняем..." : "Сохранить как черновик"}
+                </Button>
+                <Button size="sm" onClick={() => save(true)} disabled={saving}>
+                  {saving ? "Публикуем..." : "Опубликовать"}
+                </Button>
+              </>
+            )
+          ) : null}
         </div>
       </div>
 
@@ -715,10 +723,12 @@ export default function SurveyCreatePage() {
             </SortableContext>
           </DndContext>
 
-          <Button variant="outline" className="w-full" onClick={addQuestion}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить вопрос
-          </Button>
+          {canEditQuestions ? (
+            <Button variant="outline" className="w-full" onClick={addQuestion}>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить вопрос
+            </Button>
+          ) : null}
         </TabsContent>
 
         {/* Settings */}
@@ -731,17 +741,23 @@ export default function SurveyCreatePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                variant={isActive ? "secondary" : "default"}
-                onClick={() => save(!isActive)}
-                disabled={saving}
-              >
-                {isActive ? "Снять с публикации" : "Опубликовать"}
-              </Button>
+              {canEdit ? (
+                <Button
+                  variant={isActive ? "secondary" : "default"}
+                  onClick={() => save(!isActive)}
+                  disabled={saving}
+                >
+                  {isActive ? "Снять с публикации" : "Опубликовать"}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Нет прав на изменение статуса.
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          {survey ? (
+          {survey && canEdit ? (
             <Card className="border-red-200 dark:border-red-900">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-red-600 dark:text-red-400">

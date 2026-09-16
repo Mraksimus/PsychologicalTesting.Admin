@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useCallback, useEffect, useState } from "react"
-import { ArrowDown, ArrowUp, BarChart3, GripVertical, MoreHorizontal, Plus, Search } from "lucide-react"
+import { ArrowDown, ArrowUp, GripVertical, MoreHorizontal, Plus, Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import {
   DndContext,
@@ -66,11 +66,15 @@ import {
 import { surveys as surveysApi } from "@/api/endpoints"
 import type { ExistingSurvey } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 const PAGE_SIZE = 8
 
 export default function SurveysPage() {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission("SURVEYS_EDIT")
+  const canViewSessions = hasPermission("SURVEY_SESSIONS_VIEW")
   const [items, setItems] = useState<ExistingSurvey[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -220,10 +224,12 @@ export default function SurveysPage() {
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-            <Button size="sm" onClick={() => navigate("/surveys/create")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Создать опрос
-            </Button>
+            {canEdit ? (
+              <Button size="sm" onClick={() => navigate("/surveys/create")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Создать опрос
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -283,8 +289,10 @@ export default function SurveysPage() {
                         survey={survey}
                         index={idx}
                         total={filtered.length}
-                        canReorder={canReorder}
+                        canReorder={canReorder && canEdit}
                         reordering={reordering}
+                        canEdit={canEdit}
+                        canViewSessions={canViewSessions}
                         onOpen={() => navigate(`/surveys/${survey.id}`)}
                         onOpenSessions={() =>
                           navigate(`/surveys/${survey.id}/sessions`)
@@ -403,6 +411,8 @@ interface SortableSurveyRowProps {
   total: number
   canReorder: boolean
   reordering: boolean
+  canEdit: boolean
+  canViewSessions: boolean
   onOpen: () => void
   onOpenSessions: () => void
   onDelete: () => void
@@ -416,6 +426,8 @@ function SortableSurveyRow({
   total,
   canReorder,
   reordering,
+  canEdit,
+  canViewSessions,
   onOpen,
   onOpenSessions,
   onDelete,
@@ -517,16 +529,19 @@ function SortableSurveyRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onOpen}>Открыть</DropdownMenuItem>
-            <DropdownMenuItem onClick={onOpenSessions}>
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Результаты
-            </DropdownMenuItem>
+            {canViewSessions ? (
+              <DropdownMenuItem onClick={onOpenSessions}>
+                Результаты
+              </DropdownMenuItem>
+            ) : null}
+            {canEdit ? (
             <DropdownMenuItem
               className="text-red-500 focus:text-red-500"
               onClick={onDelete}
             >
               Удалить
             </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>

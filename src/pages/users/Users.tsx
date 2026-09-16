@@ -65,6 +65,7 @@ import type {
   UUID,
 } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 const PAGE_SIZE = 8
 
@@ -116,6 +117,9 @@ function fullName(u: AdminUserItem): string {
 }
 
 export default function UsersPage() {
+  const { hasPermission } = useAuth()
+  const canEditUsers = hasPermission("USERS_EDIT")
+  const canEditRoles = hasPermission("ROLES_EDIT")
   const [items, setItems] = useState<AdminUserItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -299,10 +303,12 @@ export default function UsersPage() {
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Создать пользователя
-            </Button>
+            {canEditUsers ? (
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Создать пользователя
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -424,36 +430,38 @@ export default function UsersPage() {
                     <TableCell>{formatDate(user.lastLoginAt)}</TableCell>
 
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
+                      {canEditRoles ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
 
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem disabled className="text-xs">
-                            Назначить роль
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {allRoles.map((r) => (
-                            <DropdownMenuItem
-                              key={r.id}
-                              onClick={() => handleAssignRole(user.id, r.id)}
-                            >
-                              {r.name}
-                              {user.role?.id === r.id ? " ✓" : ""}
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuItem disabled className="text-xs">
+                              Назначить роль
                             </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-500 focus:text-red-500"
-                            onClick={() => handleAssignRole(user.id, null)}
-                          >
-                            Снять роль
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <DropdownMenuSeparator />
+                            {allRoles.map((r) => (
+                              <DropdownMenuItem
+                                key={r.id}
+                                onClick={() => handleAssignRole(user.id, r.id)}
+                              >
+                                {r.name}
+                                {user.role?.id === r.id ? " ✓" : ""}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-500 focus:text-red-500"
+                              onClick={() => handleAssignRole(user.id, null)}
+                            >
+                              Снять роль
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

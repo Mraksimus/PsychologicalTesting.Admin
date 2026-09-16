@@ -42,10 +42,13 @@ import {
 import { categories as categoriesApi } from "@/api/endpoints"
 import type { ExistingCategory, NewCategory } from "@/api/types"
 import { ApiError } from "@/api/client"
+import { useAuth } from "@/api/auth-context"
 
 const EMPTY: NewCategory = { name: "", color: "#667eea", icon: "🧠" }
 
 export default function CategoriesPage() {
+  const { hasPermission } = useAuth()
+  const canEdit = hasPermission("CATEGORIES_EDIT")
   const [items, setItems] = useState<ExistingCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -149,10 +152,12 @@ export default function CategoriesPage() {
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <ThemeToggle />
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Добавить категорию
-            </Button>
+            {canEdit ? (
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                Добавить категорию
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -197,21 +202,25 @@ export default function CategoriesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(cat)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500"
-                        onClick={() => setConfirmDelete(cat)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(cat)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500"
+                            onClick={() => setConfirmDelete(cat)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

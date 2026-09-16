@@ -31,20 +31,30 @@ import {
 
 import { useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/api/auth-context"
+import type { Permission } from "@/api/types"
 
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { profile, logout } = useAuth()
+  const { profile, logout, hasPermission } = useAuth()
 
-  const items = [
+  const allItems: Array<{
+    label: string
+    icon: typeof LucideHome
+    path: string
+    permission?: Permission
+  }> = [
     { label: "Главная", icon: LucideHome, path: "/home" },
-    { label: "Пользователи", icon: Users, path: "/users" },
-    { label: "Роли", icon: Shield, path: "/roles" },
-    { label: "Тесты", icon: FileText, path: "/tests" },
-    { label: "Опросы", icon: ClipboardList, path: "/surveys" },
-    { label: "Категории", icon: Tags, path: "/categories" },
+    { label: "Пользователи", icon: Users, path: "/users", permission: "USERS_VIEW" },
+    { label: "Роли", icon: Shield, path: "/roles", permission: "ROLES_VIEW" },
+    { label: "Тесты", icon: FileText, path: "/tests", permission: "TESTS_VIEW" },
+    { label: "Опросы", icon: ClipboardList, path: "/surveys", permission: "SURVEYS_VIEW" },
+    { label: "Категории", icon: Tags, path: "/categories", permission: "CATEGORIES_VIEW" },
   ]
+
+  const items = allItems.filter(
+    (item) => !item.permission || hasPermission(item.permission),
+  )
 
   const fullName = profile
     ? [profile.surname, profile.name, profile.patronymic ?? ""]
